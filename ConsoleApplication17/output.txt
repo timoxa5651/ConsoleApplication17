@@ -1,0 +1,33 @@
+Keyword var
+Null 
+Variable test1
+Null 
+Operator =
+Null 
+LiteralStr abc
+Punctuation 
+Null 
+Keyword var
+Null 
+Variable test2
+Null 
+Operator =
+Null 
+LiteralChar b
+Punctuation 
+Null 
+Keyword if
+RoundBrack (
+Variable test1
+Null 
+Operator ==
+Null 
+Variable test2
+RoundBrack )
+CurlyBrack {
+Null 
+Null 
+Variable test
+Punctuation 
+Null 
+CurlyBrack }
