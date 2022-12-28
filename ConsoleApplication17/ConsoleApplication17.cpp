@@ -7,26 +7,11 @@
 #include <sstream>
 
 using std::cout;
-using std::cin; // ahuenno
+using std::cin;
 using std::endl;
 using std::string;
 using std::vector;
 using std::exception;
-
-/*
-
-global function pidor;
-global function huesos;
-
-void function pidor(){
-	var a = 123;
-	var b = float(777);
-	if(a == b){
-		// sosi
-	}
-}
-pasted from apex squirrel
-*/
 
 
 
@@ -38,12 +23,12 @@ enum class ELexemeType : int {
 	Keyword,
 	LiteralStr,
 	Operator,
-	Punctuation,
 	LiteralChar,
 
 	RoundBrack,
 	BoxBrack,
 	CurlyBrack,
+	Punctuation,
 
 	LiteralNum32,
 	LiteralNum64,
@@ -66,7 +51,7 @@ struct Lexeme {
 		if constexpr (std::is_same_v<T, std::string>) {
 			return this->str_;
 		}
-		if constexpr (std::is_same_v<T, __int64>) {
+		if constexpr (std::is_same_v<T, long long>) {
 			return this->i64_;
 		}
 		if constexpr (std::is_same_v<T, int> || std::is_same_v<T, char>) {
@@ -75,7 +60,7 @@ struct Lexeme {
 		if constexpr (std::is_same_v<T, float>) {
 			return this->flt_;
 		}
-		throw std::logic_error("dolbaeb");
+		throw std::logic_error("");
 	}
 	template<typename T>
 	void set_val(const T& val) {
@@ -89,12 +74,12 @@ struct Lexeme {
 			this->i64_ = 0;
 			this->int_ = val;
 		}
-		else if constexpr (std::is_same_v<T, float>) {
+		else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
 			this->i64_ = 0;
 			this->flt_ = val;
 		}
 		else {
-			throw std::logic_error("dolbaeb");
+			throw std::logic_error("");
 		}
 	}
 
@@ -165,7 +150,7 @@ public:
 	}
 };
 
-struct Stream { //Откуда ты это говно взял есть связи
+struct Stream { 
 public:
 	Stream(string s = "") {
 		this->str = s;
@@ -289,8 +274,6 @@ int main()
 	buffer << t.rdbuf();
 	std::string input = buffer.str();
 
-	//string input = "var yeban = hui;\nvar a123 = 12300000000000; var 123 = 123(0);";
-
 	vector<Lexeme> result;
 	result.reserve(100);
 
@@ -319,7 +302,7 @@ int main()
 		}
 		else if (rd == ',' || rd == ';') {
 			stream.seek(1);
-			result.push_back(Lexeme(ELexemeType::Punctuation));
+			result.push_back(Lexeme(ELexemeType::Punctuation, rd));
 			continue;
 		}
 		else if (rd == '"' || rd == '\'') {
@@ -417,5 +400,6 @@ int main()
 		out << g_LexemeTypeToStr[rs.type] << " " << LexemeTypeDataToStr(rs) << endl;
 		//cout << g_LexemeTypeToStr[rs.type] << " " << LexemeTypeDataToStr(rs) << endl;		
 	}
+	out.close();
 	cin.get();
 }

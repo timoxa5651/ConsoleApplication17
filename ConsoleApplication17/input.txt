@@ -1,5 +1,10 @@
-var test1 = "abc";
-var test2 = 'b';
-if(test1 == test2){
-	test;
+int gcd(int a, int b){
+	for(; aaaa; bbb == 0; 34bbb = 0){
+		return b;
+	}
+	@
+	a = 555555552.77;
+	b = 'j'
+	b = "string"
 }
+

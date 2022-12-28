@@ -1,33 +1,77 @@
-Keyword var
+Variable int
 Null 
-Variable test1
-Null 
-Operator =
-Null 
-LiteralStr abc
-Punctuation 
-Null 
-Keyword var
-Null 
-Variable test2
-Null 
-Operator =
-Null 
-LiteralChar b
-Punctuation 
-Null 
-Keyword if
+Variable gcd
 RoundBrack (
-Variable test1
+Variable int
 Null 
-Operator ==
+Variable a
+Punctuation ,
 Null 
-Variable test2
+Variable int
+Null 
+Variable b
 RoundBrack )
 CurlyBrack {
 Null 
 Null 
-Variable test
-Punctuation 
+Keyword for
+RoundBrack (
+Punctuation ;
+Null 
+Variable aaaa
+Punctuation ;
+Null 
+Variable bbb
+Null 
+Operator ==
+Null 
+LiteralNum32 0
+Punctuation ;
+Null 
+LiteralNum32 34
+Variable bbb
+Null 
+Operator =
+Null 
+LiteralNum32 0
+RoundBrack )
+CurlyBrack {
+Null 
+Null 
+Null 
+Keyword return
+Null 
+Variable b
+Punctuation ;
+Null 
 Null 
 CurlyBrack }
+Null 
+Null 
+Invalid 
+Null 
+Null 
+Variable a
+Null 
+Operator =
+Null 
+LiteralDouble 555555584.000000
+Punctuation ;
+Null 
+Null 
+Variable b
+Null 
+Operator =
+Null 
+LiteralChar j
+Null 
+Null 
+Variable b
+Null 
+Operator =
+Null 
+LiteralStr string
+Null 
+CurlyBrack }
+Null 
+Null 
