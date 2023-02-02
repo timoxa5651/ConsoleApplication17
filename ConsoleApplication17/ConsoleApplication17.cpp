@@ -180,7 +180,9 @@ public:
 		return this->str[this->off];
 	}
 
-	__int64 get_num(int st, bool read, bool negat = false) {
+	__int64 get_num(int st, bool read, bool negat = false, int* outRead = 0) {
+		int rst = 0;
+
 		bool ng = this->str[st] == '-';
 		if (!negat && ng)
 			throw ReadExpection(this->off, "Only positive numbers are allowed");
@@ -210,6 +212,7 @@ public:
 			}
 			st += 1;
 		}
+		if (outRead)*outRead = rs - rst;
 		return rs * (ng ? -1 : 1);
 	}
 
@@ -247,15 +250,16 @@ public:
 		if (this->peek_char() == L'.') {
 			if (read)
 				this->seek(1);
-			double pst = this->get_num(st + 1, read, false);
-			while (pst > 1.0) pst /= 10;
+			int readLen = 0;
+			double pst = this->get_num(st + 1, read, false, &readLen);
+			pst /= pow(10, readLen);
 			rs += pst;
 		}
 		return rs * (ng ? -1 : 1);
 	}
 
 private:
-	string str; // в дс зайди
+	string str;
 	int off;
 };
 
@@ -335,7 +339,7 @@ int main()
 			continue;
 		}
 		else {
-			auto checkIfInList = [&](vector<string> list) -> std::tuple<bool, string> {
+			auto checkIfInList = [&](vector<string> list, bool isOperator) -> std::tuple<bool, string> {
 				int cr = stream.get_cur();
 				std::tuple<bool, string> result = { false, "" };
 				for (int i = 0; !stream.is_end() && list.size(); ++i) {
@@ -345,9 +349,9 @@ int main()
 							it = list.erase(it);
 						}
 						else if (it->size() == i + 1) {
-							bool flag = false;
-							if (stream.is_end()) flag = true;
-							else {
+							bool flag = isOperator;
+							if (!flag || stream.is_end()) flag = true;
+							else if(!flag) {
 								char c = tolower(stream.peek_char());
 								if (!(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9')) flag = true;
 							}
@@ -365,13 +369,13 @@ int main()
 				return result;
 			};
 
-			auto [validKeyword, str] = checkIfInList(resvKeywords);
+			auto [validKeyword, str] = checkIfInList(resvKeywords, false);
 			if (validKeyword) {
 				stream.seek(str.size());
 				result.push_back(Lexeme(ELexemeType::Keyword, str));
 				continue;
 			}
-			auto [validOperator, str2] = checkIfInList(resvOperators);
+			auto [validOperator, str2] = checkIfInList(resvOperators, true);
 			if (validOperator) {
 				stream.seek(str2.size());
 				result.push_back(Lexeme(ELexemeType::Operator, str2));
@@ -380,7 +384,8 @@ int main()
 
 			string var_name;
 			for (int i = 0; !stream.is_end(); ++i) {
-				char c = tolower(stream.peek_char());
+				char n = stream.peek_char();
+				char c = tolower(n);
 				if (!(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9')) break;
 				var_name += stream.read_char();
 			}
