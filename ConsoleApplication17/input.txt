@@ -1,1 +1,10 @@
--c
+int gcd(int a, int b){
+	for(; aaaa; bbb == 0; 34bbb = 0){
+		return b;
+	}
+	@
+	a = 555555552.77;
+	b = 'j'
+	b = "string"
+}
+

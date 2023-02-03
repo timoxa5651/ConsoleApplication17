@@ -39,6 +39,8 @@ enum class ELexemeType : int {
 struct Lexeme {
 	ELexemeType type;
 
+	int line;
+	int pos;
 	string str_;
 	union {
 		__int64 i64_;
@@ -83,13 +85,14 @@ struct Lexeme {
 		}
 	}
 
-	Lexeme(ELexemeType t) {
+	Lexeme(ELexemeType t, int line, int pos) {
 		this->type = t;
+		this->line = line;
+		this->pos = pos;
 	};
 
 	template<typename T>
-	Lexeme(ELexemeType t, const T& value) {
-		this->type = t;
+	Lexeme(ELexemeType t, const T& value, int line, int pos) : Lexeme(t, line, pos) {
 		this->set_val<T>(value);
 	};
 
@@ -180,9 +183,7 @@ public:
 		return this->str[this->off];
 	}
 
-	__int64 get_num(int st, bool read, bool negat = false, int* outRead = 0) {
-		int rst = 0;
-
+	__int64 get_num(int st, bool read, bool negat = false) {
 		bool ng = this->str[st] == '-';
 		if (!negat && ng)
 			throw ReadExpection(this->off, "Only positive numbers are allowed");
@@ -212,7 +213,6 @@ public:
 			}
 			st += 1;
 		}
-		if (outRead)*outRead = rs - rst;
 		return rs * (ng ? -1 : 1);
 	}
 
@@ -250,16 +250,15 @@ public:
 		if (this->peek_char() == L'.') {
 			if (read)
 				this->seek(1);
-			int readLen = 0;
-			double pst = this->get_num(st + 1, read, false, &readLen);
-			pst /= pow(10, readLen);
+			double pst = this->get_num(st + 1, read, false);
+			while (pst > 1.0) pst /= 10;
 			rs += pst;
 		}
 		return rs * (ng ? -1 : 1);
 	}
 
 private:
-	string str;
+	string str; // в дс зайди
 	int off;
 };
 
@@ -281,32 +280,39 @@ int main()
 	vector<Lexeme> result;
 	result.reserve(100);
 
+	int currentLine = 1;
+	int lineStartPos = 0;
+
 	Stream stream = input;
 	while (!stream.is_end()) {
 		char rd = stream.peek_char();
 		if (rd == ' ' || rd == '\n' || rd == '\t') {
+			if (rd == '\n') {
+				currentLine += 1;
+				lineStartPos = stream.get_cur();
+			}
 			stream.seek(1);
-			result.push_back(Lexeme(ELexemeType::Null));
+			result.push_back(Lexeme(ELexemeType::Null, currentLine, stream.get_cur() - lineStartPos));
 			continue;
 		}
 		else if (rd == '{' || rd == '}') {
 			stream.seek(1);
-			result.push_back(Lexeme(ELexemeType::CurlyBrack, rd));
+			result.push_back(Lexeme(ELexemeType::CurlyBrack, rd, currentLine, stream.get_cur() - lineStartPos));
 			continue;
 		}
 		else if (rd == '[' || rd == ']') {
 			stream.seek(1);
-			result.push_back(Lexeme(ELexemeType::BoxBrack, rd));
+			result.push_back(Lexeme(ELexemeType::BoxBrack, rd, currentLine, stream.get_cur() - lineStartPos));
 			continue;
 		}
 		else if (rd == '(' || rd == ')') {
 			stream.seek(1);
-			result.push_back(Lexeme(ELexemeType::RoundBrack, rd));
+			result.push_back(Lexeme(ELexemeType::RoundBrack, rd, currentLine, stream.get_cur() - lineStartPos));
 			continue;
 		}
 		else if (rd == ',' || rd == ';') {
 			stream.seek(1);
-			result.push_back(Lexeme(ELexemeType::Punctuation, rd));
+			result.push_back(Lexeme(ELexemeType::Punctuation, rd, currentLine, stream.get_cur() - lineStartPos));
 			continue;
 		}
 		else if (rd == '"' || rd == '\'') {
@@ -317,7 +323,7 @@ int main()
 				var_name += stream.read_char();
 			}
 			stream.seek(1);
-			result.push_back(Lexeme(rd == '"' ? ELexemeType::LiteralStr : ELexemeType::LiteralChar, var_name));
+			result.push_back(Lexeme(rd == '"' ? ELexemeType::LiteralStr : ELexemeType::LiteralChar, var_name, currentLine, stream.get_cur() - lineStartPos));
 			continue;
 		}
 		else if (rd >= '0' && rd <= '9') {
@@ -326,20 +332,20 @@ int main()
 			if (!stream.is_end() && stream.peek_char() == '.') {
 				stream.set_cur(cr);
 				double num2 = stream.get_num_dbl(stream.get_cur(), true, true);
-				result.push_back(Lexeme(ELexemeType::LiteralDouble, num2));
+				result.push_back(Lexeme(ELexemeType::LiteralDouble, num2, currentLine, stream.get_cur() - lineStartPos));
 			}
 			else {
 				if (abs(num) >= INT_MAX) {
-					result.push_back(Lexeme(ELexemeType::LiteralNum64, num));
+					result.push_back(Lexeme(ELexemeType::LiteralNum64, num, currentLine, stream.get_cur() - lineStartPos));
 				}
 				else {
-					result.push_back(Lexeme(ELexemeType::LiteralNum32, num));
+					result.push_back(Lexeme(ELexemeType::LiteralNum32, num, currentLine, stream.get_cur() - lineStartPos));
 				}
 			}
 			continue;
 		}
 		else {
-			auto checkIfInList = [&](vector<string> list, bool isOperator) -> std::tuple<bool, string> {
+			auto checkIfInList = [&](vector<string> list) -> std::tuple<bool, string> {
 				int cr = stream.get_cur();
 				std::tuple<bool, string> result = { false, "" };
 				for (int i = 0; !stream.is_end() && list.size(); ++i) {
@@ -349,9 +355,9 @@ int main()
 							it = list.erase(it);
 						}
 						else if (it->size() == i + 1) {
-							bool flag = isOperator;
-							if (!flag || stream.is_end()) flag = true;
-							else if(!flag) {
+							bool flag = false;
+							if (stream.is_end()) flag = true;
+							else {
 								char c = tolower(stream.peek_char());
 								if (!(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9')) flag = true;
 							}
@@ -369,33 +375,32 @@ int main()
 				return result;
 			};
 
-			auto [validKeyword, str] = checkIfInList(resvKeywords, false);
+			auto [validKeyword, str] = checkIfInList(resvKeywords);
 			if (validKeyword) {
 				stream.seek(str.size());
-				result.push_back(Lexeme(ELexemeType::Keyword, str));
+				result.push_back(Lexeme(ELexemeType::Keyword, str, currentLine, stream.get_cur() - lineStartPos));
 				continue;
 			}
-			auto [validOperator, str2] = checkIfInList(resvOperators, true);
+			auto [validOperator, str2] = checkIfInList(resvOperators);
 			if (validOperator) {
 				stream.seek(str2.size());
-				result.push_back(Lexeme(ELexemeType::Operator, str2));
+				result.push_back(Lexeme(ELexemeType::Operator, str2, currentLine, stream.get_cur() - lineStartPos));
 				continue;
 			}
 
 			string var_name;
 			for (int i = 0; !stream.is_end(); ++i) {
-				char n = stream.peek_char();
-				char c = tolower(n);
+				char c = tolower(stream.peek_char());
 				if (!(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9')) break;
 				var_name += stream.read_char();
 			}
 
 			if (!var_name.size()) {
-				result.push_back(Lexeme(ELexemeType::Invalid));
+				result.push_back(Lexeme(ELexemeType::Invalid, currentLine, stream.get_cur() - lineStartPos));
 				stream.seek(1);
 			}
 			else {
-				result.push_back(Lexeme(ELexemeType::Variable, var_name));
+				result.push_back(Lexeme(ELexemeType::Variable, var_name, currentLine, stream.get_cur() - lineStartPos));
 			}
 		}
 	}
