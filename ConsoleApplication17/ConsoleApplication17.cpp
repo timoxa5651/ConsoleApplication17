@@ -345,7 +345,7 @@ int main()
 			continue;
 		}
 		else {
-			auto checkIfInList = [&](vector<string> list) -> std::tuple<bool, string> {
+			auto checkIfInList = [&](vector<string> list, bool isOperator) -> std::tuple<bool, string> {
 				int cr = stream.get_cur();
 				std::tuple<bool, string> result = { false, "" };
 				for (int i = 0; !stream.is_end() && list.size(); ++i) {
@@ -355,7 +355,7 @@ int main()
 							it = list.erase(it);
 						}
 						else if (it->size() == i + 1) {
-							bool flag = false;
+							bool flag = isOperator;
 							if (stream.is_end()) flag = true;
 							else {
 								char c = tolower(stream.peek_char());
@@ -375,13 +375,13 @@ int main()
 				return result;
 			};
 
-			auto [validKeyword, str] = checkIfInList(resvKeywords);
+			auto [validKeyword, str] = checkIfInList(resvKeywords, false);
 			if (validKeyword) {
 				stream.seek(str.size());
 				result.push_back(Lexeme(ELexemeType::Keyword, str, currentLine, stream.get_cur() - lineStartPos));
 				continue;
 			}
-			auto [validOperator, str2] = checkIfInList(resvOperators);
+			auto [validOperator, str2] = checkIfInList(resvOperators, true);
 			if (validOperator) {
 				stream.seek(str2.size());
 				result.push_back(Lexeme(ELexemeType::Operator, str2, currentLine, stream.get_cur() - lineStartPos));

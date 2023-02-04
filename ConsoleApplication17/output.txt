@@ -1,0 +1,9 @@
+Keyword var
+Null 
+Variable l
+Null 
+Operator =
+Null 
+Operator -
+LiteralNum32 1
+Punctuation ;
