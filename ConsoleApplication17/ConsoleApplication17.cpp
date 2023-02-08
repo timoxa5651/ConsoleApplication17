@@ -964,10 +964,10 @@ private:
         if (curLexeme_.string != "(") {
             throw ParserException(curLexeme_, input_.tellg(), "expected opening bracket in for structure");
         }
-        ReadLexeme();
-        if (curLexeme_.string != "var") {
-            throw ParserException(curLexeme_, input_.tellg(), "expected iterator declaration");
-        }
+//        ReadLexeme();
+//        if (curLexeme_.string != "var") {
+//            throw ParserException(curLexeme_, input_.tellg(), "expected iterator declaration");
+//        }
         ReadLexeme();
         Name();
         ReadLexeme();

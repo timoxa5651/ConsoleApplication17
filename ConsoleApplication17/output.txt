@@ -9,9 +9,13 @@ Variable main 6
 RoundBrack ( 6
 RoundBrack ) 6
 CurlyBrack { 6
-Variable var 7
-Operator = 7
-LiteralNum32 0 7
-Punctuation ; 7
-CurlyBrack } 8
+Keyword for 7
+RoundBrack ( 7
+Variable i 7
+Variable in 7
+LiteralStr jsnkdfj 7
+RoundBrack ) 7
+CurlyBrack { 7
+CurlyBrack } 9
+CurlyBrack } 10
 End

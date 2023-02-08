@@ -4,5 +4,7 @@ function var() {
 }
 
 function main(){
-    var = 0;
+    for(i in "jsnkdfj"){
+
+    }
 }
