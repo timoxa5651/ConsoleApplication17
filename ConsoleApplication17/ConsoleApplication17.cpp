@@ -5,6 +5,7 @@
 #include <exception>
 #include <fstream>
 #include <sstream>
+#include "climits"
 
 using std::cout;
 using std::cin;
@@ -197,7 +198,7 @@ public:
         __int64 rd = 0;
         for (int i = st; i < this->str.size(); ++i) {
             if (this->str[i] >= '0' && this->str[i] <= '9') {
-                rd = std::max(1ll, rd * 10);
+                rd = std::max((int64_t) 1, rd * 10);
             }
             else {
                 break;
