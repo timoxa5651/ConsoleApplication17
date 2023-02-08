@@ -792,7 +792,7 @@ private:
     }
 
     void Exp() {
-        MultivariateAnalyse({&Parser::VariableDeclaration, /*&Parser::ListDeclaration,*/ &Parser::FunctionCall,
+        MultivariateAnalyse({/*&Parser::VariableDeclaration, &Parser::ListDeclaration,*/ &Parser::FunctionCall,
                              &Parser::SpecialOperators, &Parser::ConditionalSpecialOperators, &Parser::Assign, &Parser::Return}, true);
     }
 

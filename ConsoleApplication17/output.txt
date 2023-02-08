@@ -1,5 +1,5 @@
 Variable function 2
-Variable a 2
+Variable var 2
 RoundBrack ( 2
 RoundBrack ) 2
 CurlyBrack { 2
@@ -9,10 +9,9 @@ Variable main 6
 RoundBrack ( 6
 RoundBrack ) 6
 CurlyBrack { 6
-Variable read 7
-RoundBrack ( 7
-Variable a 7
-RoundBrack ) 7
+Variable var 7
+Operator = 7
+LiteralNum32 0 7
 Punctuation ; 7
 CurlyBrack } 8
 End

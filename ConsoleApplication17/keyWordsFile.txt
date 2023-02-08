@@ -1,4 +1,3 @@
-var
 while
 for
 if
