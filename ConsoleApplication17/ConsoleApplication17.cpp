@@ -407,7 +407,7 @@ int main()
 
 	std::ofstream out("output.txt");
 	for (auto rs : result) {
-		out << g_LexemeTypeToStr[rs.type] << " " << LexemeTypeDataToStr(rs) << endl;
+		out << rs.line << " " << g_LexemeTypeToStr[rs.type] << " " << LexemeTypeDataToStr(rs) << endl;
 		//cout << g_LexemeTypeToStr[rs.type] << " " << LexemeTypeDataToStr(rs) << endl;		
 	}
 	out.close();

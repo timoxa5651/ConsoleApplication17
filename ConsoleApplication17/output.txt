@@ -1,9 +1,18 @@
-Keyword var
-Null 
-Variable l
-Null 
-Operator =
-Null 
-Operator -
-LiteralNum32 1
-Punctuation ;
+1 Keyword var
+1 Null 
+1 Variable l
+1 Null 
+1 Operator =
+1 Null 
+1 Operator -
+1 LiteralNum32 1
+1 Punctuation ;
+2 Null 
+2 Variable sosi
+2 Invalid 
+2 Variable xuy
+2 Null 
+2 Operator =
+2 Null 
+2 LiteralNum32 2
+2 Punctuation ;
