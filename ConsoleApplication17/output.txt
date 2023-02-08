@@ -1,18 +1,18 @@
-1 Keyword var
-1 Null 
-1 Variable l
-1 Null 
-1 Operator =
-1 Null 
-1 Operator -
-1 LiteralNum32 1
-1 Punctuation ;
-2 Null 
-2 Variable sosi
-2 Invalid 
-2 Variable xuy
-2 Null 
-2 Operator =
-2 Null 
-2 LiteralNum32 2
-2 Punctuation ;
+Variable function 2
+Variable a 2
+RoundBrack ( 2
+RoundBrack ) 2
+CurlyBrack { 2
+CurlyBrack } 4
+Variable function 6
+Variable main 6
+RoundBrack ( 6
+RoundBrack ) 6
+CurlyBrack { 6
+Variable read 7
+RoundBrack ( 7
+Variable a 7
+RoundBrack ) 7
+Punctuation ; 7
+CurlyBrack } 8
+End

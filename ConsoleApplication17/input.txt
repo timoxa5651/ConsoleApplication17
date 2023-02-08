@@ -1,2 +1,8 @@
-var l = -1;
-sosi_xuy = 2;
+
+function a() {
+
+}
+
+function main(){
+    read(a);
+}

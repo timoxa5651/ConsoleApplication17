@@ -1192,6 +1192,6 @@ int main()
     out.close();
     cin.get();
 
-    Parser parser("/Users/insembion/Documents/C++/Lexeme/output.txt");
+    Parser parser("../output.txt");
     parser.Check();
 }
