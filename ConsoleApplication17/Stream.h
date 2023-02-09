@@ -13,7 +13,7 @@ public:
 	string msg;
 
 	ReadException(int position, string message = "");
-	virtual const char* what() const;
+	virtual const char* what() const noexcept;
 };
 
 struct Stream {
@@ -33,6 +33,6 @@ public:
 	double get_num_dbl(int st, bool read, bool negat = false);
 
 private:
-	string str; // в дс зайди
+	string str; // пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	int off;
 };

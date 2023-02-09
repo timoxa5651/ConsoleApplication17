@@ -6,7 +6,7 @@ ReadException::ReadException(int position, string message) {
 }
 
 
-const char* ReadException::what() const {
+const char* ReadException::what() const noexcept {
 	return (this->msg + " at pos " + std::to_string(position + 1)).c_str();
 }
 
