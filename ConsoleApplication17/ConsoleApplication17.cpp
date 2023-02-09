@@ -337,10 +337,6 @@ public:
 		try {
 			ReadLexeme();
 			Program();
-			//            ReadLexeme();
-			//            if (curLexeme_.string != "End") {
-			//                throw ParserException(curLexeme_, input_.tellg(), "there are unwanted symbols after main()");
-			//            }
 		}
 		catch (ParserException& exception) {
 			if (exception.lexemeNum < deepestException.lexemeNum) {
@@ -427,13 +423,11 @@ private:
 				if (curLexeme_.string == "main") {
 					ReadLexeme();
 					if (curLexeme_.string != "(") {
-						//throw ParserException(curLexeme_, input_.tellg(), "there is no opening bracket in function declaration", curLexeme_.line);
 						throw ParserException(curLexeme_, input_.tellg(),
 							"there is no opening bracket in function declaration");
 					}
 					ReadLexeme();
 					if (curLexeme_.string != ")") {
-						//throw ParserException(curLexeme_, input_.tellg(), "there is no closing bracket in function declaration");
 						throw ParserException(curLexeme_, input_.tellg(),
 							"there is no closing bracket in function declaration");
 					}
@@ -457,29 +451,6 @@ private:
 			if (!wasMain) {
 				throw ParserException(curLexeme_, input_.tellg(), "there is no main() in program");
 			}
-
-			//            if (curLexeme_.string == "function") {
-			//                ReadLexeme();
-			//                if (curLexeme_.string == "main") {
-			//                    ReadLexeme();
-			//                    if (curLexeme_.string != "(") {
-			//                        throw ParserException(curLexeme_, input_.tellg(), "there is no opening bracket in function declaration");
-			//                    }
-			//                    ReadLexeme();
-			//                    if (curLexeme_.string != ")") {
-			//                        throw ParserException(curLexeme_, input_.tellg(), "there is no closing bracket in function declaration");
-			//                    }
-			//                    ReadLexeme();
-			//                    Block();
-			//                } else {
-			//                    //ReadLexeme();
-			//                    Function();
-			//                    ReadLexeme();
-			//                    Program();
-			//                }
-			//            } else {
-			//                throw ParserException(curLexeme_, input_.tellg(), "there is no keyword in function declaration");
-			//            }
 		}
 		catch (ParserException& exception) {
 			if (exception.lexemeNum < deepestException.lexemeNum && exception.lexemeNum >= 0) {
@@ -508,7 +479,6 @@ private:
 			throw ParserException(curLexeme_, input_.tellg(), "there is no closing bracket in function declaration");
 		}
 		ReadLexeme();
-		//        RootBlock();
 		Block();
 	}
 
@@ -529,7 +499,6 @@ private:
 			throw ParserException(curLexeme_, input_.tellg(), "there is no opening curly bracket in block definition");
 		}
 		ReadLexeme();
-		//        if (curLexeme_.string == "return") throw ParserException(curLexeme_, input_.tellg());
 		while (curLexeme_.string != "}") {
 			Statement();
 			ReadLexeme();
@@ -566,8 +535,6 @@ private:
 		input_.seekg(pos - curLexeme_.GetLineLength());
 	}
 
-	//void Operation1() {}
-
 	void Priority2() {
 		Priority3();
 		ReadLexeme();
@@ -579,8 +546,6 @@ private:
 		int64_t pos = input_.tellg();
 		input_.seekg(pos - curLexeme_.GetLineLength());
 	}
-
-	//void Operation2() {}
 
 	void Priority3() {
 		Priority4();
@@ -594,8 +559,6 @@ private:
 		input_.seekg(pos - curLexeme_.GetLineLength());
 	}
 
-	//void Operation3() {}
-
 	void Priority4() {
 		Priority5();
 		ReadLexeme();
@@ -607,8 +570,6 @@ private:
 		int64_t pos = input_.tellg();
 		input_.seekg(pos - curLexeme_.GetLineLength());
 	}
-
-	//void Operation4() {}
 
 	void Priority5() {
 		Priority6();
@@ -622,8 +583,6 @@ private:
 		input_.seekg(pos - curLexeme_.GetLineLength());
 	}
 
-	//void Operation5() {}
-
 	void Priority6() {
 		Priority7();
 		ReadLexeme();
@@ -636,10 +595,8 @@ private:
 		input_.seekg(pos - curLexeme_.GetLineLength());
 	}
 
-	//void Operation6() {}
 
 	void Priority7() {
-		//ReadLexeme();
 		if (curLexeme_.string == "-" || curLexeme_.string == "!") {
 			ReadLexeme();
 			Priority8();
@@ -648,8 +605,6 @@ private:
 			Priority8();
 		}
 	}
-
-	//void Operation7() {}
 
 	void Priority8() {
 		if (curLexeme_.string == "(") {
@@ -686,15 +641,6 @@ private:
 	}
 
 	void Arguments() {
-		//        Operand();
-		//        ReadLexeme();
-		//        while (curLexeme_.string == ",") {
-		//            ReadLexeme();
-		//            Operand();
-		//            ReadLexeme();
-		//        }
-		//        int64_t pos = input_.tellg();
-		//        input_.seekg(pos - curLexeme_.GetLineLength());
 		ValueExp();
 		ReadLexeme();
 		while (curLexeme_.string == ",") {
@@ -714,20 +660,6 @@ private:
 		if (curLexeme_.type != ELexemeType::LiteralStr && curLexeme_.type != ELexemeType::LiteralChar) {
 			throw ParserException(curLexeme_, input_.tellg(), "invalid string literal");
 		}
-		//        if (curLexeme_.string != "\"") {
-		//            throw ParserException(curLexeme_, input_.tellg());
-		//        }
-		//        ReadLexeme();
-		//        for(auto item : curLexeme_.string) {
-		//            item = std::tolower(item);
-		//            if ((item < '0' || item > '9') && (item < 'a' || item > 'z') && (item < 'A' || item > 'Z')) {
-		//                throw ParserException(curLexeme_, input_.tellg());
-		//            }
-		//        }
-		//        ReadLexeme();
-		//        if (curLexeme_.string != "\"") {
-		//            throw ParserException(curLexeme_, input_.tellg());
-		//        }
 	}
 
 	void Name() {
@@ -737,17 +669,8 @@ private:
 		if (curLexeme_.type != ELexemeType::Variable) {
 			throw ParserException(curLexeme_, input_.tellg(), "invalid variable name");
 		}
-		//        if ('a' > tolower(curLexeme_.string[0]) || tolower(curLexeme_.string[0]) > 'z') {
-		//            throw ParserException(curLexeme_, input_.tellg());
-		//        }
-		//        for (int i = 1; i < curLexeme_.string.size(); ++i) {
-		//            if (('a' > tolower(curLexeme_.string[i]) || tolower(curLexeme_.string[i]) > 'z') && (curLexeme_.string[i] < '0' || curLexeme_.string[i] > '9')) {
-		//                throw ParserException(curLexeme_, input_.tellg());
-		//            }
-		//        }
 	}
 
-	//void Symbol() {}
 	void Num() {
 		if (curLexeme_.type != ELexemeType::LiteralDouble && curLexeme_.type != ELexemeType::LiteralNum32 && curLexeme_.type != ELexemeType::LiteralNum64) {
 			throw ParserException(curLexeme_, input_.tellg(), "invalid number");
@@ -756,7 +679,6 @@ private:
 
 	void List() {
 		MultivariateAnalyse({ &Parser::TemporaryList, &Parser::Name });
-		//        Name();
 	}
 
 	void ListElement() {
@@ -785,19 +707,13 @@ private:
 		ReadLexeme();
 		if (curLexeme_.string != ";") {
 			ValueExp();
-			//            Name();
 		}
 		else {
 			input_.seekg(input_.tellg() - curLexeme_.GetLineLength());
 		}
-		//        ReadLexeme();
-		//        if (curLexeme_.string != ";") {
-		//            throw ParserException(curLexeme_, input_.tellg(), "there is no end of line symbol");
-		//        }
 	}
 
 	void Assign() {
-		//Name();
 		MultivariateAnalyse({ &Parser::ListElement, &Parser::Name });
 		ReadLexeme();
 		if (curLexeme_.string != "=") {
@@ -824,29 +740,6 @@ private:
 		}
 
 	}
-
-	//    void ListDeclaration() {
-	//        if (curLexeme_.string != "var") {
-	//            throw ParserException(curLexeme_, input_.tellg(), "expected keyword var");
-	//        }
-	//        ReadLexeme();
-	//        Name();
-	//        ReadLexeme();
-	//        if (curLexeme_.string != "=") {
-	//            throw ParserException(curLexeme_, input_.tellg(), "invalid assignment operator");
-	//        }
-	//        ReadLexeme();
-	//        TemporaryList();
-	////        if (curLexeme_.string != "[") {
-	////            throw ParserException(curLexeme_, input_.tellg(), "expected opening box bracket in list declaration");
-	////        }
-	////        ReadLexeme();
-	////        Arguments();
-	////        ReadLexeme();
-	////        if (curLexeme_.string != "]") {
-	////            throw ParserException(curLexeme_, input_.tellg(), "expected closing box bracket in list declaration");
-	////        }
-	//    }
 
 	void TemporaryList() {
 		if (curLexeme_.string != "[") {
@@ -901,7 +794,6 @@ private:
 	void InputArguments() {
 		MultivariateAnalyse({ &Parser::Name, &Parser::ListElement });
 	}
-	//void Return() {}
 
 	void ConditionalSpecialOperators() {
 		MultivariateAnalyse({ &Parser::For, &Parser::While, &Parser::If });
@@ -949,10 +841,7 @@ private:
 		if (curLexeme_.string != "(") {
 			throw ParserException(curLexeme_, input_.tellg(), "expected opening bracket in for structure");
 		}
-		//        ReadLexeme();
-		//        if (curLexeme_.string != "var") {
-		//            throw ParserException(curLexeme_, input_.tellg(), "expected iterator declaration");
-		//        }
+
 		ReadLexeme();
 		Name();
 		ReadLexeme();
@@ -1017,8 +906,6 @@ private:
 		}
 		if (flag) {
 			throw exception_;
-			//throw ParserException(exception_.lexemeType, exception_.lexeme, exception_.lexemeNum, exception_.context);
-			//throw ParserException(curLexeme_, input_.tellg());
 		}
 
 	}
@@ -1168,6 +1055,7 @@ int main()
 		}
 	}
 
+    std::vector<Lexeme> lexemes;
 	std::ofstream out("../output.txt");
 	for (auto rs : result) {
 		if (rs.type == ELexemeType::Null) continue;
