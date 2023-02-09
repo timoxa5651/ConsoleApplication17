@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 #include <climits>
+#include <set>
 
 using std::cout;
 using std::cin;
@@ -356,6 +357,8 @@ private:
 	Lexeme curLexeme_;
 	ParserException deepestException;
 
+	std::set<string> declaredFunctions;
+
 	void ReadLexeme() {
 		std::string type = "Null";
 		while (type == "Null" && !input_.eof() && type != "End") {
@@ -418,6 +421,9 @@ private:
 			bool wasMain = false;
 			while (curLexeme_.string == "function") {
 				ReadLexeme();
+				if (!declaredFunctions.insert(curLexeme_.string).second)
+					throw ParserException(curLexeme_, input_.tellg(), "function " + curLexeme_.string + " declared multiple times");
+
 				if (curLexeme_.string == "main") {
 					ReadLexeme();
 					if (curLexeme_.string != "(") {
@@ -518,32 +524,6 @@ private:
 		input_.seekg(pos - curLexeme_.GetLineLength());
 	}
 
-	//    void RootBlock() {
-	//        if (curLexeme_.type != ELexemeType::CurlyBrack || curLexeme_.string != "{") {
-	//            throw ParserException(curLexeme_, input_.tellg(), "there is no opening curly bracket in function declaration");
-	//        }
-	//        ReadLexeme();
-	//        while (curLexeme_.string != "}" /*&& curLexeme_.string != "return"*/) {
-	//            Statement();
-	//            ReadLexeme();
-	//        }
-	////        if (curLexeme_.string == "return") {
-	////            ReadLexeme();
-	////            if (curLexeme_.string != ";") {
-	////                //Name();
-	////                ValueExp();
-	////                ReadLexeme();
-	////            }
-	////            if (curLexeme_.string != ";") {
-	////                throw ParserException(curLexeme_, input_.tellg(), "there is no end of line symbol");
-	////            }
-	////            ReadLexeme();
-	////        }
-	//        if (curLexeme_.string != "}") {
-	//            throw ParserException(curLexeme_, input_.tellg(), "there is no opening curly bracket in function declaration");
-	//        }
-	//    }
-
 	void Block() {
 		if (curLexeme_.string != "{") {
 			throw ParserException(curLexeme_, input_.tellg(), "there is no opening curly bracket in block definition");
@@ -560,27 +540,7 @@ private:
 	}
 
 	void Statement() {
-		//        int64_t pos = (int64_t)input_.tellg() - curLexeme_.GetLineLength();
-		//        try {
-		//            ValueExp();
-		//            ReadLexeme();
-		//            if (curLexeme_.string != ";") {
-		//                throw ParserException(curLexeme_, input_.tellg());
-		//            }
-		//        } catch (ParserException& exception) {
-		//            input_.seekg(pos);
-		//            ReadLexeme();
-		//            Exp();
-		//        }
-		//        ReadLexeme();
-		//        if (curLexeme_.string != ";") {
-		//            throw ParserException(curLexeme_, input_.tellg());
-		//        }
 		Exp();
-		//        ReadLexeme();
-		//        if (curLexeme_.string != ";") {
-		//            throw ParserException(curLexeme_, input_.tellg());
-		//        }
 	}
 
 	void ValueExp() {
@@ -1070,12 +1030,12 @@ int main()
 	vector<string> resvKeywords/* = { "var", "while", "for", "if", "switch" }*/;
 	vector<string> resvOperators = { "+", "*", "/", "-", "%", "=", "&&", "==", "!=", "||", "<", "<=", ">=", ">", "//" };
 
-	std::ifstream keyWordsFile("../keyWordsFile.txt");
+	std::ifstream keyWordsFile("keyWordsFile.txt");
 	string str;
 	while (keyWordsFile >> str) {
 		resvKeywords.push_back(str);
 	}
-	std::ifstream t("../input.txt");
+	std::ifstream t("input.txt");
 	std::stringstream buffer;
 	buffer << t.rdbuf();
 	std::string input = buffer.str();
