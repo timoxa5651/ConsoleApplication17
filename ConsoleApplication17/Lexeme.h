@@ -86,7 +86,7 @@ struct LexemeSyntax {
 };
 
 
-static string LexemeTypeDataToStr(LexemeSyntax lexeme);
+extern string LexemeTypeDataToStr(LexemeSyntax lexeme);
 extern std::map< ELexemeType, string> g_LexemeTypeToStr;
 
 

@@ -28,7 +28,7 @@ int64_t Lexeme::GetLineLength() {
 
 
 
-static string LexemeTypeDataToStr(LexemeSyntax lexeme) {
+string LexemeTypeDataToStr(LexemeSyntax lexeme) {
 	if ((int)lexeme.type >= (int)ELexemeType::LiteralDouble) {
 		return std::to_string(lexeme.flt_);
 	}

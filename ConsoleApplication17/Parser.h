@@ -29,7 +29,7 @@ public:
 class CompilationResult;
 class Parser {
 public:
-	explicit Parser(const vector<Lexeme>& lexemes);
+	explicit Parser(const vector<LexemeSyntax>& lexemes);
 
 	bool Check(CompilationResult* result);
 private:

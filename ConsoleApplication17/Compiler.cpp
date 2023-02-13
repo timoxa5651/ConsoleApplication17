@@ -178,7 +178,7 @@ CompilationResult* Compiler::Compile(string inputFile) {
 		return result;
 	}
 	this->parser = new Parser(input);
-	if (!this->parser.Check(result)) {
+	if (!this->parser->Check(result)) {
 		return result;
 	}
 

@@ -23,7 +23,7 @@ using std::exception;
 int main()
 {
 	Compiler compiler = Compiler();
-	CompilationResult* result = compiler.Compile("input.txt");
+	CompilationResult* result = compiler.Compile("../input.txt");
 	
 	cout << result->GetString() << endl;
 	delete result;

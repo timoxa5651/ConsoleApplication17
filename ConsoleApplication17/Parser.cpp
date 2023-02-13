@@ -33,20 +33,28 @@ std::string ParserException::what() {
 
 
 
-Parser::Parser(const vector<Lexeme>& lexemes) {
-	this->input_ = lexemes;
+Parser::Parser(const vector<LexemeSyntax>& lexemes) {
+    std::vector<Lexeme> arr;
+    for (auto& lex : lexemes) {
+        if (lex.type == ELexemeType::Null) continue;
+        arr.emplace_back(lex.type, LexemeTypeDataToStr(lex), lex.line);
+    }
+    arr.emplace_back(ELexemeType::Null, "End", INT_MAX);
+	this->input_ = arr;
 	this->currentLexemeIdx = 0;
 	this->deepestException.lexemeNum = -2;
+    this->MovePtr(0);
 }
 void Parser::MovePtr(int idx) {
 	this->currentLexemeIdx += idx;
 	this->currentLexemeIdx = std::max(this->currentLexemeIdx, 0);
 	this->currentLexemeIdx = std::min((size_t)this->currentLexemeIdx, this->input_.size() - 1);
+    this->curLexeme_ = this->input_[this->currentLexemeIdx];
 }
 
 bool Parser::Check(CompilationResult* result) {
 	try {
-		ReadLexeme();
+		//ReadLexeme();
 		Program();
 	}
 	catch (ParserException& exception) {

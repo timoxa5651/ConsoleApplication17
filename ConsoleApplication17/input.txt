@@ -2,11 +2,14 @@
 function func() {
 
 }
-function func(x, y){
+function func1(x, y){
 
 }
 
 function main(){
+    a = ' ';
+    a = [1, [1,3,4,5]]
+    b = a[1][2];
     for(i in "jsnkdfj"){
         
     }
