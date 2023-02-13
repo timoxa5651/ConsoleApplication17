@@ -41,6 +41,8 @@ private:
 
 	void MovePtr(int idx);
 
+    void ClassBlock();
+    void ClassStatement();
 	void ReadLexeme();
 	void Program();
 	void Function();

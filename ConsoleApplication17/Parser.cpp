@@ -73,36 +73,76 @@ void Parser::ReadLexeme() {
 	this->MovePtr(1);
 }
 
+void Parser::ClassStatement() {
+    Function();
+}
+
+void Parser::ClassBlock() {
+    if (curLexeme_.string != "{") {
+        throw ParserException(curLexeme_, this->currentLexemeIdx, "there is no opening curly bracket in block definition");
+    }
+    ReadLexeme();
+    while (curLexeme_.string != "}") {
+        ClassStatement();
+        ReadLexeme();
+    }
+    if (curLexeme_.string != "}") {
+        throw ParserException(curLexeme_, this->currentLexemeIdx, "there is no closing curly bracket in block definition");
+    }
+}
+
 void Parser::Program() {
 	try {
 		bool wasMain = false;
-		while (curLexeme_.string == "function") {
-			ReadLexeme();
-			if (!declaredFunctions.insert(curLexeme_.string).second)
-				throw ParserException(curLexeme_, this->currentLexemeIdx, "function " + curLexeme_.string + " declared multiple times");
+		while (curLexeme_.string == "function" || curLexeme_.string == "class") {
 
-			if (curLexeme_.string == "main") {
-				ReadLexeme();
-				if (curLexeme_.string != "(") {
-					throw ParserException(curLexeme_, this->currentLexemeIdx,
-						"there is no opening bracket in function declaration");
-				}
-				ReadLexeme();
-				if (curLexeme_.string != ")") {
-					throw ParserException(curLexeme_, this->currentLexemeIdx,
-						"there is no closing bracket in function declaration");
-				}
-				ReadLexeme();
-				Block();
-				ReadLexeme();
-				wasMain = true;
-				break;
-			}
-			else {
-				//ReadLexeme();
-				Function();
-				ReadLexeme();
-			}
+            if (curLexeme_.string == "class") {
+                ReadLexeme();
+                Name();
+                ReadLexeme();
+                if (curLexeme_.string != "(") {
+                    throw ParserException(curLexeme_, this->currentLexemeIdx,
+                                          "expected ( in class declaration");
+                }
+                ReadLexeme();
+                Num();
+                ReadLexeme();
+                if (curLexeme_.string != ")") {
+                    throw ParserException(curLexeme_, this->currentLexemeIdx,
+                                          "expected ) in class declaration");
+                }
+                ReadLexeme();
+                ClassBlock();
+                ReadLexeme();
+            } else {
+
+                ReadLexeme();
+                if (!declaredFunctions.insert(curLexeme_.string).second)
+                    throw ParserException(curLexeme_, this->currentLexemeIdx,
+                                          "function " + curLexeme_.string + " declared multiple times");
+
+                if (curLexeme_.string == "main") {
+                    ReadLexeme();
+                    if (curLexeme_.string != "(") {
+                        throw ParserException(curLexeme_, this->currentLexemeIdx,
+                                              "there is no opening bracket in function declaration");
+                    }
+                    ReadLexeme();
+                    if (curLexeme_.string != ")") {
+                        throw ParserException(curLexeme_, this->currentLexemeIdx,
+                                              "there is no closing bracket in function declaration");
+                    }
+                    ReadLexeme();
+                    Block();
+                    ReadLexeme();
+                    wasMain = true;
+                    break;
+                } else {
+                    //ReadLexeme();
+                    Function();
+                    ReadLexeme();
+                }
+            }
 		}
 		if (curLexeme_.string != "End") {
 			//                throw ParserException(curLexeme_, this->currentLexemeIdx, "incorrect function declaration");
