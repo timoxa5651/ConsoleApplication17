@@ -26,10 +26,21 @@ public:
 	virtual std::string what();
 };
 
+struct DeclaredFunction {
+	string name;
+	int numArgs;
+
+	bool operator==(const DeclaredFunction& ex) {
+		return ex.name == this->name;
+	}
+};
+
 class CompilationResult;
+class FunctionScope;
 class Parser {
 public:
 	explicit Parser(const vector<LexemeSyntax>& lexemes);
+	~Parser();
 
 	bool Check(CompilationResult* result);
 private:
@@ -37,7 +48,12 @@ private:
 	int currentLexemeIdx;
 	Lexeme curLexeme_;
 	ParserException deepestException;
-	std::set<string> declaredFunctions;
+	string currentClass;
+	std::map<string, std::set<DeclaredFunction>> declaredFunctions;
+	std::set<string> declaredClasses;
+	FunctionScope* currentScope;
+	bool isInAssign = false;
+	bool isInFuncCall = false;
 
 	void MovePtr(int idx);
 
@@ -82,6 +98,10 @@ private:
 	void Else();
 	void For();
 	void While();
-	void MultivariateAnalyse(const std::vector<void (Parser::*)()>& variants, bool isCheckEndLineSymbol = false);
+	void MultivariateAnalyse(const std::vector<void (Parser::*)()>& variants, bool isCheckEndLineSymbol = false, bool isAssign = false);
+	
+	bool FunctionExists(string name) {
+		return this->declaredFunctions.find(name) != this->declaredFunctions.end();
+	}
 };
 

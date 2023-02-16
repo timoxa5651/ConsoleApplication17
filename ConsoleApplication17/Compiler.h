@@ -33,6 +33,25 @@ public:
 	CompilationResult();
 };
 
+
+class FunctionScope {
+	FunctionScope* parent;
+	std::set<string> declaredVaribles;
+public:
+	FunctionScope(FunctionScope* scope) : parent(scope) {};
+
+	bool HasVariable(const string& variableName);
+	void InsertVariable(const string& variableName);
+	FunctionScope* GetParent() { return this->parent; }
+	void RemoveParent() {
+		if (this->parent) {
+			this->parent->RemoveParent();
+			delete this->parent;
+		}
+		this->parent = nullptr;
+	}
+};
+
 class Compiler
 {
 	Stream stream;

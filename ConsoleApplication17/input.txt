@@ -1,23 +1,9 @@
-
-class A(10){
-    f(){
-        return;
-    }
-}
-
-
-function func() {
-
-}
-function func1(x, y){
+function abc(){
 
 }
 
 function main(){
-    a = ' ';
-    a = [1, [1,3,4,5]];
-    b = a[1];
-    for(i in "jsnkdfj"){
-        
-    }
+	a = 0;
+	c = 0;
+	a = abc(c);
 }

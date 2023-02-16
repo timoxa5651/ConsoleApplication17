@@ -19,6 +19,18 @@ void CompilationResult::SetException(const CompileException& ex) {
 	this->compileException = ex;
 }
 
+
+bool FunctionScope::HasVariable(const string& variableName) {
+	if (this->parent && this->parent->HasVariable(variableName)) {
+		return true;
+	}
+	return this->declaredVaribles.find(variableName) != this->declaredVaribles.end();
+}
+
+void FunctionScope::InsertVariable(const string& variableName) {
+	this->declaredVaribles.insert(variableName);
+}
+
 vector<LexemeSyntax> Compiler::GetLexems(string inputFile) {
 	vector<string> resvOperators = { "+", "*", "/", "-", "%", "=", "&&", "==", "!=", "||", "<", "<=", ">=", ">", "//" };
 	vector<string> resvKeywords = { "while", "for", "if", "switch", "return", "function" };
