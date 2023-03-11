@@ -193,25 +193,41 @@ void Parser::Function() {
 	if (curLexeme_.type != ELexemeType::Variable) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "unnamed function");
 	}
-	if (!this->currentClass.empty() && !declaredFunctions[this->currentClass].insert(curLexeme_.string).second)
+	DeclaredFunction func;
+	func.name = curLexeme_.string;
+	func.numArgs = -1;
+	if (!this->currentClass.empty() && this->declaredFunctions[this->currentClass].find(func) != this->declaredFunctions[this->currentClass].end())
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "function " + curLexeme_.string + " declared multiple times");
+	func.numArgs = 0;
 	ReadLexeme();
 	if (curLexeme_.string != "(") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "there is no opening bracket in function declaration");
 	}
 	ReadLexeme();
+	std::set<string> args;
 	if (curLexeme_.string != ")") {
-		FunctionArgumentsDeclaration();
+		args = FunctionArgumentsDeclaration();
+		func.numArgs = args.size();
 		ReadLexeme();
 	}
 	if (curLexeme_.string != ")") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "there is no closing bracket in function declaration");
 	}
+	
+
+	this->declaredFunctions[this->currentClass].insert(func);
+	FunctionScope* prevScope = this->currentScope;
+	this->currentScope = new FunctionScope(this->currentScope);
+	for (const string& s : args)
+		this->currentScope->InsertVariable(s);
 	ReadLexeme();
 	Block();
+
+	delete this->currentScope;
+	this->currentScope = prevScope;
 }
 
-void Parser::FunctionArgumentsDeclaration() {
+std::set<string> Parser::FunctionArgumentsDeclaration() {
 	std::set<string> args;
 	this->isInAssign = true;
 	Name();
@@ -228,25 +244,25 @@ void Parser::FunctionArgumentsDeclaration() {
 		ReadLexeme();
 	}
 	this->MovePtr(-1);
+	return args;
 }
 
 void Parser::Block() {
-	FunctionScope* prevScope = this->currentScope;
-	this->currentScope = new FunctionScope(this->currentScope);
-
 	if (curLexeme_.string != "{") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "there is no opening curly bracket in block definition");
 	}
 	ReadLexeme();
+	FunctionScope* prevScope = this->currentScope;
+	this->currentScope = new FunctionScope(this->currentScope);
 	while (curLexeme_.string != "}") {
 		Statement();
 		ReadLexeme();
 	}
+	delete this->currentScope;
+	this->currentScope = prevScope;
 	if (curLexeme_.string != "}") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "there is no closing curly bracket in block definition");
 	}
-	delete this->currentScope;
-	this->currentScope = prevScope;
 }
 
 void Parser::Statement() {
@@ -365,13 +381,17 @@ void Parser::FunctionCall() {
 		throw;
 	}
 	this->isInFuncCall = false;
+	DeclaredFunction currentFunc;
+	currentFunc.name = this->lastReadName;
+	currentFunc.numArgs = -1;
 	ReadLexeme();
 	if (curLexeme_.string != "(") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx - 1, "missed opening bracket in function call");
 	}
 	ReadLexeme();
+	int passedParams = 0;
 	if (curLexeme_.string != ")") {
-		Arguments();
+		passedParams = Arguments();
 	}
 	else {
 		return;
@@ -380,21 +400,29 @@ void Parser::FunctionCall() {
 	if (curLexeme_.string != ")") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "missed closing bracket in function call");
 	}
+
+	const DeclaredFunction& dFunc = *this->declaredFunctions[this->currentClass].find(currentFunc);
+	if (dFunc.numArgs != passedParams) {
+		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid arguments " + std::to_string(passedParams) + " != " + std::to_string(dFunc.numArgs));
+	}
 }
 
-void Parser::Arguments() {
+int Parser::Arguments() {
+	int numArgs = 1;
 	ValueExp();
 	ReadLexeme();
 	while (curLexeme_.string == ",") {
 		ReadLexeme();
 		ValueExp();
 		ReadLexeme();
+		numArgs += 1;
 	}
 	this->MovePtr(-1);
+	return numArgs;
 }
 
 void Parser::Container() {
-	MultivariateAnalyse({/*&Parser::Range*/ &Parser::FunctionCall, &Parser::List, &Parser::String });
+	MultivariateAnalyse({&Parser::FunctionCall, &Parser::List, &Parser::String });
 }
 
 void Parser::String() {
@@ -410,7 +438,10 @@ void Parser::Name() {
 	if (curLexeme_.type != ELexemeType::Variable) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid variable name");
 	}
-	bool isFunction = this->declaredFunctions[this->currentClass].find(curLexeme_.string) != this->declaredFunctions[this->currentClass].end();
+	DeclaredFunction func;
+	func.name = curLexeme_.string;
+	func.numArgs = -1;
+	bool isFunction = this->declaredFunctions[this->currentClass].find(func) != this->declaredFunctions[this->currentClass].end();
 	if (!this->isInFuncCall) {
 		if (isFunction) {
 			throw ParserException(curLexeme_, this->currentLexemeIdx, "unable to reference function");
@@ -420,6 +451,7 @@ void Parser::Name() {
 	if (!isFunction && !this->isInAssign && !this->currentScope->HasVariable(curLexeme_.string)) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "undefined variable");
 	}
+	this->lastReadName = curLexeme_.string;
 }
 
 void Parser::Num() {

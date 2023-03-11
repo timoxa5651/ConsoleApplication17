@@ -30,8 +30,14 @@ struct DeclaredFunction {
 	string name;
 	int numArgs;
 
-	bool operator==(const DeclaredFunction& ex) {
-		return ex.name == this->name;
+	bool operator==(const DeclaredFunction& ex) const {
+		return ex.name == this->name && (ex.numArgs < 0 || this->numArgs < 0 || this->numArgs == ex.numArgs);
+	}
+	bool operator<(const DeclaredFunction& ex) const {
+		return this->name < ex.name;
+	}
+	DeclaredFunction() {
+		this->numArgs = 0;
 	}
 };
 
@@ -54,6 +60,7 @@ private:
 	FunctionScope* currentScope;
 	bool isInAssign = false;
 	bool isInFuncCall = false;
+	string lastReadName;
 
 	void MovePtr(int idx);
 
@@ -62,7 +69,7 @@ private:
 	void ReadLexeme();
 	void Program();
 	void Function();
-	void FunctionArgumentsDeclaration();
+	std::set<string> FunctionArgumentsDeclaration();
 	void Block();
 	void Statement();
 	void ValueExp();
@@ -77,7 +84,7 @@ private:
 	void Priority7();
 	void Priority8();
 	void FunctionCall();
-	void Arguments();
+	int Arguments();
 	void Container();
 	void String();
 	void Name();

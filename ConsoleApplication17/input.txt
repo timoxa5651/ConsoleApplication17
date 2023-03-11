@@ -1,9 +1,17 @@
-function abc(){
-
+function abc(x, xx){
+	
 }
 
 function main(){
-	a = 0;
-	c = 0;
-	a = abc(c);
+	abc("1", 1, 2);
+	x = 0;
+	if(x){
+		b = 0;
+		if(x){
+			x = 0;
+			y = x;
+		}
+		z = y;
+	}
+	c = s + 1;
 }
