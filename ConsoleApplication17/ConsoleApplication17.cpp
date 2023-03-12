@@ -9,7 +9,7 @@
 #include <set>
 #include "Stream.h"
 #include "Lexeme.h"
-#include "Compiler.h"
+#include "OCompiler.h"
 
 using std::cout;
 using std::cin;

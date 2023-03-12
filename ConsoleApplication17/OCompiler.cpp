@@ -1,4 +1,4 @@
-#include "Compiler.h"
+#include "OCompiler.h"
 
 CompilationResult::CompilationResult() {
 	this->wasOk = true;
