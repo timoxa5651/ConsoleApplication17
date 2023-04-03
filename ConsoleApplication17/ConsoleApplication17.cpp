@@ -23,11 +23,11 @@ using std::exception;
 int main()
 {
 	Compiler compiler = Compiler();
-	CompilationResult* result = compiler.Compile("../input.txt");
-	if (result->GetString().find("Failed to read")) {
-		delete result;
-		result = compiler.Compile("input.txt");
-	}
+	CompilationResult* result = compiler.Compile("/Users/insembion/Documents/C++/ConsoleApplication17/ConsoleApplication17/input.txt");
+//	if (result->GetString().find("Failed to read")) {
+//		delete result;
+//		result = compiler.Compile("input.txt");
+//	}
 	cout << result->GetString() << endl;
 	delete result;
 }

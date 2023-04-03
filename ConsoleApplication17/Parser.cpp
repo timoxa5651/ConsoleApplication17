@@ -144,7 +144,7 @@ void Parser::Program() {
                 if (this->FunctionExists(curLexeme_.string))
                     throw ParserException(curLexeme_, this->currentLexemeIdx,
                                           "function " + curLexeme_.string + " declared multiple times");
-
+                poliz.addFunction(curLexeme_.string, poliz.GetCurAddress());
                 if (curLexeme_.string == "main") {
                     ReadLexeme();
                     if (curLexeme_.string != "(") {

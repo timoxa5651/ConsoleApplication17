@@ -5,6 +5,7 @@
 #include <set>
 #include "Lexeme.h"
 #include "Stream.h"
+#include "Poliz.h"
 
 using std::vector;
 using std::string;
@@ -61,6 +62,7 @@ private:
 	bool isInAssign = false;
 	bool isInFuncCall = false;
 	string lastReadName;
+    Poliz poliz;
 
 	void MovePtr(int idx);
 
