@@ -144,7 +144,7 @@ void Parser::Program() {
                 if (this->FunctionExists(curLexeme_.string))
                     throw ParserException(curLexeme_, this->currentLexemeIdx,
                                           "function " + curLexeme_.string + " declared multiple times");
-                poliz.addFunction(curLexeme_.string, poliz.GetCurAddress());
+                poliz.addFunction(curLexeme_.string);
                 if (curLexeme_.string == "main") {
                     ReadLexeme();
                     if (curLexeme_.string != "(") {
@@ -452,12 +452,20 @@ void Parser::Name() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "undefined variable");
 	}
 	this->lastReadName = curLexeme_.string;
+    if (isInFuncCall) {
+        poliz.addEntryToBlock(PolizCmd::Call, curLexeme_.string);
+    }
+    if (isInAssign) {
+        poliz.addEntryToBlock(PolizCmd::Call, curLexeme_.string);
+    }
 }
 
 void Parser::Num() {
 	if (curLexeme_.type != ELexemeType::LiteralDouble && curLexeme_.type != ELexemeType::LiteralNum32 && curLexeme_.type != ELexemeType::LiteralNum64) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid number");
 	}
+//    poliz.entryBlock.emplace_back(PolizCmd::Const, curLexeme_.string);
+    poliz.addEntryToBlock(PolizCmd::Const, curLexeme_.string);
 }
 
 void Parser::List() {
@@ -503,14 +511,21 @@ void Parser::Assign() {
 	if (curLexeme_.type == ELexemeType::Variable) {
 		newVar = curLexeme_.string;
 		flag = true;
+//        poliz.entryBlock.emplace_back(PolizCmd::Var, curLexeme_.string);
+        poliz.addEntryToBlock(PolizCmd::Var, curLexeme_.string);
 	}
 	ReadLexeme();
 	if (curLexeme_.string != "=") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid assignment operator");
 	}
+
+    poliz.addEntryBlockToPoliz();
+
 	ReadLexeme();
 	ValueExp();
 
+//    poliz.entryBlock.emplace_back(PolizCmd::Operation, "=");
+    poliz.addEntryToBlock(PolizCmd::Operation, "=");
 	if (flag) {
 		this->currentScope->InsertVariable(newVar);
 	}
@@ -695,9 +710,11 @@ void Parser::MultivariateAnalyse(const std::vector<void (Parser::*)()>& variants
 					deepestException = exception;
 				}
 			}
+            poliz.clearEntryBlock();
 			continue;
 		}
 		flag = false;
+        poliz.addEntryBlockToPoliz();
 		break;
 	}
 	this->isInAssign = false;

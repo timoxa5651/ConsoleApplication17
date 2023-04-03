@@ -41,10 +41,14 @@ class Poliz {
     std::vector<PolizEntry> poliz;
     std::map<std::string, int> functionsRegistry;
     std::stack<int> callStack;
+    std::vector<std::pair<PolizCmd, std::string>> entryBlock;
 public:
-    void addEntryBlock(std::vector<std::pair<PolizCmd, std::string>>& block);
+
+    void addEntryToBlock(PolizCmd operation, std::string operand);
+    void clearEntryBlock();
+    void addEntryBlockToPoliz();
     void addEntry(PolizCmd operation, std::string& operand);
-    void addFunction(std::string name, int address);
+    void addFunction(std::string name);
     void pushCallStack(int address);
     int getFunctionAddress(std::string name);
     int GetReturnAddress();

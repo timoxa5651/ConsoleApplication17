@@ -4,8 +4,8 @@
 
 #include "Poliz.h"
 
-void Poliz::addFunction(std::string name, int address) {
-    functionsRegistry.insert({name, address});
+void Poliz::addFunction(std::string name) {
+    functionsRegistry.insert({name, poliz.size()});
 }
 
 void Poliz::pushCallStack(int address) {
@@ -23,11 +23,20 @@ int Poliz::GetReturnAddress() {
 }
 
 void Poliz::addEntry(PolizCmd operation, std::string& operand) {
-    poliz.emplace_back(poliz.back().id + 1, operation, operand);
+    poliz.emplace_back( poliz.empty() ? 0 : poliz.back().id + 1, operation, operand);
 }
 
-void Poliz::addEntryBlock(std::vector<std::pair<PolizCmd, std::string>> &block) {
-    for (auto elem : block) {
+void Poliz::addEntryBlockToPoliz() {
+    for (auto elem : entryBlock) {
         addEntry(elem.first, elem.second);
     }
+    entryBlock.clear();
+}
+
+void Poliz::addEntryToBlock(PolizCmd operation, std::string operand) {
+    entryBlock.emplace_back(operation, operand);
+}
+
+void Poliz::clearEntryBlock() {
+    entryBlock.clear();
 }
