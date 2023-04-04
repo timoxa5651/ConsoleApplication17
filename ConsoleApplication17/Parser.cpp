@@ -107,6 +107,7 @@ void Parser::ClassBlock() {
 }
 
 Poliz Parser::Program() {
+    Poliz programPoliz;
 	try {
 		bool wasMain = false;
 		while (curLexeme_.string == "function" || curLexeme_.string == "class") {
@@ -144,7 +145,7 @@ Poliz Parser::Program() {
                 if (this->FunctionExists(curLexeme_.string))
                     throw ParserException(curLexeme_, this->currentLexemeIdx,
                                           "function " + curLexeme_.string + " declared multiple times");
-                poliz.addFunction(curLexeme_.string);
+                programPoliz.addFunction(curLexeme_.string);
                 if (curLexeme_.string == "main") {
                     ReadLexeme();
                     if (curLexeme_.string != "(") {
@@ -157,13 +158,13 @@ Poliz Parser::Program() {
                                               "there is no closing bracket in function declaration");
                     }
                     ReadLexeme();
-                    Block();
+                    programPoliz += Block();
                     ReadLexeme();
                     wasMain = true;
                     break;
                 } else {
                     //ReadLexeme();
-                    poliz += Function();
+                    programPoliz += Function();
                     ReadLexeme();
                 }
             }
@@ -186,6 +187,8 @@ Poliz Parser::Program() {
 			throw exception;
 		}
 	}
+
+    return programPoliz;
 }
 
 Poliz Parser::Function() {
@@ -220,10 +223,11 @@ Poliz Parser::Function() {
 	for (const string& s : args)
 		this->currentScope->InsertVariable(s);
 	ReadLexeme();
-	Block();
+	auto res = Block();
 
 	delete this->currentScope;
 	this->currentScope = prevScope;
+    return res;
 }
 
 std::set<string> Parser::FunctionArgumentsDeclaration() {
@@ -253,8 +257,9 @@ Poliz Parser::Block() {
 	ReadLexeme();
 	FunctionScope* prevScope = this->currentScope;
 	this->currentScope = new FunctionScope(this->currentScope);
+    Poliz block;
 	while (curLexeme_.string != "}") {
-		Statement();
+		block += Statement();
 		ReadLexeme();
 	}
 	delete this->currentScope;
@@ -262,87 +267,112 @@ Poliz Parser::Block() {
 	if (curLexeme_.string != "}") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "there is no closing curly bracket in block definition");
 	}
+    return block;
 }
 
 Poliz Parser::Statement() {
-	Exp();
+    return Exp();
 }
 
 Poliz Parser::ValueExp() {
-	MultivariateAnalyse({ &Parser::Value, &Parser::Container });
+    return MultivariateAnalyse({ &Parser::Value, &Parser::Container });
 }
 Poliz Parser::Operand() {
-	MultivariateAnalyse({ &Parser::ListElement, &Parser::FunctionCall, &Parser::Name, &Parser::String, &Parser::Num });
+	return MultivariateAnalyse({ &Parser::ListElement, &Parser::FunctionCall, &Parser::Name, &Parser::String, &Parser::Num });
 }
 
 Poliz Parser::Value() {
-	Priority1();
+    return Priority1();
 }
 
 Poliz Parser::Priority1() {
-	Priority2();
+	auto res = Priority2();
 	ReadLexeme();
 	while (curLexeme_.string == "||") {
-		ReadLexeme();
-		Priority2();
-		ReadLexeme();
+        auto cmd = curLexeme_.string;
+        ReadLexeme();
+        auto operand = Priority2();
+        ReadLexeme();
+        res += operand;
+        res.addEntry(PolizCmd::Operation, cmd);
 	}
 	this->MovePtr(-1);
+    return res;
 }
 
 Poliz Parser::Priority2() {
-	Priority3();
+	auto res = Priority3();
 	ReadLexeme();
 	while (curLexeme_.string == "&&") {
-		ReadLexeme();
-		Priority3();
-		ReadLexeme();
+        auto cmd = curLexeme_.string;
+        ReadLexeme();
+        auto operand = Priority3();
+        ReadLexeme();
+        res += operand;
+        res.addEntry(PolizCmd::Operation, cmd);
 	}
 	this->MovePtr(-1);
+    return res;
 }
 
 Poliz Parser::Priority3() {
-	Priority4();
+	auto res =Priority4();
 	ReadLexeme();
 	while (curLexeme_.string == "==" || curLexeme_.string == "!=") {
-		ReadLexeme();
-		Priority4();
-		ReadLexeme();
+        auto cmd = curLexeme_.string;
+        ReadLexeme();
+        auto operand = Priority4();
+        ReadLexeme();
+        res += operand;
+        res.addEntry(PolizCmd::Operation, cmd);
 	}
 	this->MovePtr(-1);
+    return res;
 }
 
 Poliz Parser::Priority4() {
-	Priority5();
+	auto res =Priority5();
 	ReadLexeme();
 	while (curLexeme_.string == ">=" || curLexeme_.string == "<=" || curLexeme_.string == "<" || curLexeme_.string == ">") {
-		ReadLexeme();
-		Priority5();
-		ReadLexeme();
+        auto cmd = curLexeme_.string;
+        ReadLexeme();
+        auto operand = Priority5();
+        ReadLexeme();
+        res += operand;
+        res.addEntry(PolizCmd::Operation, cmd);
 	}
 	this->MovePtr(-1);
+    return res;
 }
 
 Poliz Parser::Priority5() {
-	Priority6();
+	auto res = Priority6();
 	ReadLexeme();
 	while (curLexeme_.string == "+" || curLexeme_.string == "-") {
+        auto cmd = curLexeme_.string;
 		ReadLexeme();
-		Priority6();
+		auto operand = Priority6();
 		ReadLexeme();
+        res += operand;
+        res.addEntry(PolizCmd::Operation, cmd);
 	}
 	this->MovePtr(-1);
+    return res;
 }
 
 Poliz Parser::Priority6() {
-	Priority7();
+	auto res = Priority7();
 	ReadLexeme();
 	while (curLexeme_.string == "*" || curLexeme_.string == "/" || curLexeme_.string == "//" || curLexeme_.string == "%") {
+        auto cmd = curLexeme_.string;
 		ReadLexeme();
-		Priority7();
+		auto operand = Priority7();
 		ReadLexeme();
+        res += operand;
+        res.addEntry(PolizCmd::Operation, cmd);
 	}
 	this->MovePtr(-1);
+    return res;
 }
 
 Poliz Parser::Priority7() {
@@ -351,29 +381,32 @@ Poliz Parser::Priority7() {
 		Priority8();
 	}
 	else {
-		Priority8();
+        return Priority8();
 	}
 }
 
 Poliz Parser::Priority8() {
 	if (curLexeme_.string == "(") {
 		ReadLexeme();
-		Priority1();
+		auto exp = Priority1();
 		ReadLexeme();
 		if (curLexeme_.string != ")") {
 			throw ParserException(curLexeme_, this->currentLexemeIdx, "missed closing bracket");
 		}
+        return exp;
 	}
 	else {
-		Operand();
+        return Operand();
 	}
 }
 
 
 Poliz Parser::FunctionCall() {
 	this->isInFuncCall = true;
+    Poliz funcName;
 	try {
-		Name();
+		funcName = Name();
+        funcName.changeEntryCmd(funcName.GetCurAddress(), PolizCmd::Call);
 	}
 	catch (const ParserException& ex) {
 		this->isInFuncCall = false;
@@ -390,10 +423,11 @@ Poliz Parser::FunctionCall() {
 	ReadLexeme();
 	int passedParams = 0;
 	if (curLexeme_.string != ")") {
-		passedParams = Arguments();
+        auto args = Arguments();
+		passedParams = args.first;
 	}
 	else {
-		return Poliz();
+		return funcName;
 	}
 	ReadLexeme();
 	if (curLexeme_.string != ")") {
@@ -404,24 +438,25 @@ Poliz Parser::FunctionCall() {
 	if (dFunc.numArgs != passedParams) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid arguments " + std::to_string(passedParams) + " != " + std::to_string(dFunc.numArgs));
 	}
+    return funcName;
 }
 
-int Parser::Arguments() {
+std::pair<int, Poliz> Parser::Arguments() {
 	int numArgs = 1;
-	ValueExp();
+	auto param = ValueExp();
 	ReadLexeme();
 	while (curLexeme_.string == ",") {
 		ReadLexeme();
-		ValueExp();
+		param += ValueExp();
 		ReadLexeme();
 		numArgs += 1;
 	}
 	this->MovePtr(-1);
-	return numArgs;
+	return {numArgs, param};
 }
 
 Poliz Parser::Container() {
-	MultivariateAnalyse({&Parser::FunctionCall, &Parser::List, &Parser::String });
+    return MultivariateAnalyse({&Parser::FunctionCall, &Parser::List, &Parser::String });
 }
 
 Poliz Parser::String() {
@@ -451,6 +486,9 @@ Poliz Parser::Name() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "undefined variable");
 	}
 	this->lastReadName = curLexeme_.string;
+    Poliz res;
+    res.addEntry(PolizCmd::Var, curLexeme_.string);
+    return res;
 //    if (isInFuncCall) {
 //        poliz.addEntryToBlock(PolizCmd::Call, curLexeme_.string);
 //    } else {
@@ -462,30 +500,37 @@ Poliz Parser::Num() {
 	if (curLexeme_.type != ELexemeType::LiteralDouble && curLexeme_.type != ELexemeType::LiteralNum32 && curLexeme_.type != ELexemeType::LiteralNum64) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid number");
 	}
+    Poliz res;
+    res.addEntry(PolizCmd::Const, curLexeme_.string);
+    return res;
 //    poliz.addEntryToBlock(PolizCmd::Const, curLexeme_.string);
 }
 
 Poliz Parser::List() {
-	MultivariateAnalyse({ &Parser::TemporaryList, &Parser::Name });
+	return MultivariateAnalyse({ &Parser::TemporaryList, &Parser::Name });
 }
 
 Poliz Parser::ListElement() {
-	Name();
+	auto arrayName = Name();
+    arrayName.changeEntryCmd(arrayName.GetCurAddress(), PolizCmd::ArrayAccess);
+
 //    poliz.changeEntryCmdInBlock(poliz.GetCurAddress(), PolizCmd::ArrayAccess);
 	ReadLexeme();
 	if (curLexeme_.string != "[") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected opening box bracket in getting list element");
 	}
 	ReadLexeme();
-	MultivariateAnalyse({ &Parser::Name, &Parser::Num, &Parser::ListElement });
+	auto index = MultivariateAnalyse({ &Parser::Name, &Parser::Num, &Parser::ListElement });
 	ReadLexeme();
 	if (curLexeme_.string != "]") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing box bracket in getting list element");
 	}
+    auto res = arrayName + index;
+    return res;
 }
 
 Poliz Parser::Exp() {
-	MultivariateAnalyse({/*&Parser::VariableDeclaration, &Parser::ListDeclaration,*/ &Parser::FunctionCall,
+	return MultivariateAnalyse({/*&Parser::VariableDeclaration, &Parser::ListDeclaration,*/ &Parser::FunctionCall,
 						 &Parser::SpecialOperators, &Parser::ConditionalSpecialOperators, &Parser::Assign, &Parser::Return }, true);
 }
 
@@ -503,7 +548,7 @@ Poliz Parser::Return() {
 }
 
 Poliz Parser::Assign() {
-	MultivariateAnalyse({ &Parser::ListElement, &Parser::Name }, false, true);
+	auto assignTo = MultivariateAnalyse({ &Parser::ListElement, &Parser::Name }, false, true);
 	string newVar = "";
 	bool flag = false;
 	if (curLexeme_.type == ELexemeType::Variable) {
@@ -518,12 +563,15 @@ Poliz Parser::Assign() {
 //    poliz.addEntryBlockToPoliz();
 
 	ReadLexeme();
-	ValueExp();
+	auto value = ValueExp();
 
 //    poliz.addEntryToBlock(PolizCmd::Operation, "=");
 	if (flag) {
 		this->currentScope->InsertVariable(newVar);
 	}
+    Poliz res = assignTo + value;
+    res.addEntry(PolizCmd::Operation, "=");
+    return res;
 }
 
 void Parser::VariableDeclaration() {
@@ -544,21 +592,28 @@ void Parser::VariableDeclaration() {
 }
 
 Poliz Parser::TemporaryList() {
+    Poliz res;
+
 	if (curLexeme_.string != "[") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected opening box bracket in list declaration");
 	}
 	ReadLexeme();
+    std::pair<int, Poliz> args;
 	if (curLexeme_.string != "]") {
-		Arguments();
+		args = Arguments();
 		ReadLexeme();
 	}
+    res.addEntry(PolizCmd::Array, std::to_string(args.first));
+    res += args.second;
+
 	if (curLexeme_.string != "]") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing box bracket in list declaration");
 	}
+    return res;
 }
 
 Poliz Parser::SpecialOperators() {
-	MultivariateAnalyse({ &Parser::InputOperator, &Parser::OutputOperator });
+	return MultivariateAnalyse({ &Parser::InputOperator, &Parser::OutputOperator });
 }
 
 Poliz Parser::InputOperator() {
@@ -683,6 +738,7 @@ Poliz Parser::MultivariateAnalyse(const std::vector<Poliz (Parser::*)()>& varian
 	int64_t pos = (int64_t)this->currentLexemeIdx - 1;
 	bool flag = true;
 	ParserException exception_(ELexemeType::Null, "", -1, "", 0);
+    Poliz correctBranch;
 	for (auto fun : variants) {
 		try {
 			this->MovePtr(pos - this->currentLexemeIdx);
@@ -690,7 +746,7 @@ Poliz Parser::MultivariateAnalyse(const std::vector<Poliz (Parser::*)()>& varian
 			if (fun == &Parser::Name) {
 				this->isInAssign = isAssign;
 			}
-			(this->*fun)();
+			correctBranch = (this->*fun)();
 			if (isCheckEndLineSymbol && fun != &Parser::ConditionalSpecialOperators) {
 				ReadLexeme();
 				if (curLexeme_.string != ";") {
@@ -705,18 +761,16 @@ Poliz Parser::MultivariateAnalyse(const std::vector<Poliz (Parser::*)()>& varian
 					deepestException = exception;
 				}
 			}
-//            poliz.clearEntryBlock();
 			continue;
 		}
 		flag = false;
-//        poliz.addEntryBlockToPoliz();
 		break;
 	}
 	this->isInAssign = false;
 	if (flag) {
 		throw exception_;
 	}
-
+    return correctBranch;
 }
 
 

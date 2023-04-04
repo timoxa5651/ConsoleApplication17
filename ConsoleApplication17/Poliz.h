@@ -26,14 +26,14 @@ enum class PolizCmd{
 
 class PolizEntry{
 public:
-    PolizEntry(int id, PolizCmd operation, std::string operand){
+    PolizEntry(int id, PolizCmd cmd, std::string operand){
         this->id = id;
-        this->operation = operation;
+        this->cmd = cmd;
         this->operand = operand;
     }
 
     int id;
-    PolizCmd operation;
+    PolizCmd cmd;
     std::string operand;
 };
 
@@ -41,10 +41,11 @@ public:
 class Poliz {
     std::vector<PolizEntry> poliz;
     std::map<std::string, int> functionsRegistry;
-    std::stack<int> callStack;
+    std::vector<int> callStack;
 public:
 
-
+    void changeEntryCmd(int address, PolizCmd cmd);
+    void addEntry(PolizEntry entry);
     void addEntry(PolizCmd operation, std::string operand);
     void addFunction(std::string name);
     void pushCallStack(int address);
@@ -64,15 +65,24 @@ public:
 
     Poliz& operator += (Poliz other) {
         for (auto& elem : other.poliz) {
-            this->poliz.emplace_back(elem);
+            this->addEntry(elem);
+        }
+        for (auto& elem : other.callStack) {
+            this->callStack.push_back(elem);
         }
         return *this;
     }
 
     Poliz operator +(Poliz other) {
         Poliz res;
+        for (auto& elem : this->poliz) {
+            res.addEntry(elem);
+        }
         for (auto& elem : other.poliz) {
-            res.poliz.emplace_back(elem);
+            res.addEntry(elem);
+        }
+        for (auto& elem : other.callStack) {
+            res.callStack.push_back(elem);
         }
         return res;
     }

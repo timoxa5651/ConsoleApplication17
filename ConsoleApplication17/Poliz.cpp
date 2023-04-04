@@ -9,7 +9,7 @@ void Poliz::addFunction(std::string name) {
 }
 
 void Poliz::pushCallStack(int address) {
-    callStack.push(address);
+    callStack.push_back(address);
 }
 
 int Poliz::getFunctionAddress(std::string name) {
@@ -17,12 +17,21 @@ int Poliz::getFunctionAddress(std::string name) {
 }
 
 int Poliz::GetReturnAddress() {
-    int returnAddress = callStack.top();
-    callStack.pop();
+    int returnAddress = callStack.back();
+    callStack.pop_back();
     return returnAddress;
 }
 
 void Poliz::addEntry(PolizCmd operation, std::string operand) {
     poliz.emplace_back( poliz.empty() ? 0 : poliz.back().id + 1, operation, operand);
+}
+
+void Poliz::addEntry(PolizEntry entry) {
+    entry.id = poliz.empty() ? 0 : poliz.back().id + 1;
+    poliz.emplace_back(entry);
+}
+
+void Poliz::changeEntryCmd(int address, PolizCmd cmd) {
+    poliz[address].cmd = cmd;
 }
 

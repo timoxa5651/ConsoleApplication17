@@ -91,7 +91,7 @@ private:
     Poliz Priority8();
     Poliz FunctionCall();
 
-	int Arguments();
+	std::pair<int, Poliz> Arguments();
 
     Poliz Container();
     Poliz String();

@@ -1,5 +1,8 @@
 
+function f(){
+
+}
+
 function main(){
-    arr = [];
-    arr[1] = 0;
+    x = f();
 }
