@@ -65,7 +65,7 @@ void Parser::MovePtr(int idx) {
 bool Parser::Check(CompilationResult* result) {
 	try {
 		//ReadLexeme();
-		Program();
+		poliz = Program();
 	}
 	catch (ParserException& exception) {
 		if (exception.lexemeNum < deepestException.lexemeNum) {
@@ -106,7 +106,7 @@ void Parser::ClassBlock() {
 	this->currentScope = prevScope;
 }
 
-void Parser::Program() {
+Poliz Parser::Program() {
 	try {
 		bool wasMain = false;
 		while (curLexeme_.string == "function" || curLexeme_.string == "class") {
@@ -161,10 +161,9 @@ void Parser::Program() {
                     ReadLexeme();
                     wasMain = true;
                     break;
-                } 
-				else {
+                } else {
                     //ReadLexeme();
-                    Function();
+                    poliz += Function();
                     ReadLexeme();
                 }
             }
@@ -189,7 +188,7 @@ void Parser::Program() {
 	}
 }
 
-void Parser::Function() {
+Poliz Parser::Function() {
 	if (curLexeme_.type != ELexemeType::Variable) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "unnamed function");
 	}
@@ -247,7 +246,7 @@ std::set<string> Parser::FunctionArgumentsDeclaration() {
 	return args;
 }
 
-void Parser::Block() {
+Poliz Parser::Block() {
 	if (curLexeme_.string != "{") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "there is no opening curly bracket in block definition");
 	}
@@ -265,22 +264,22 @@ void Parser::Block() {
 	}
 }
 
-void Parser::Statement() {
+Poliz Parser::Statement() {
 	Exp();
 }
 
-void Parser::ValueExp() {
+Poliz Parser::ValueExp() {
 	MultivariateAnalyse({ &Parser::Value, &Parser::Container });
 }
-void Parser::Operand() {
+Poliz Parser::Operand() {
 	MultivariateAnalyse({ &Parser::ListElement, &Parser::FunctionCall, &Parser::Name, &Parser::String, &Parser::Num });
 }
 
-void Parser::Value() {
+Poliz Parser::Value() {
 	Priority1();
 }
 
-void Parser::Priority1() {
+Poliz Parser::Priority1() {
 	Priority2();
 	ReadLexeme();
 	while (curLexeme_.string == "||") {
@@ -291,7 +290,7 @@ void Parser::Priority1() {
 	this->MovePtr(-1);
 }
 
-void Parser::Priority2() {
+Poliz Parser::Priority2() {
 	Priority3();
 	ReadLexeme();
 	while (curLexeme_.string == "&&") {
@@ -302,7 +301,7 @@ void Parser::Priority2() {
 	this->MovePtr(-1);
 }
 
-void Parser::Priority3() {
+Poliz Parser::Priority3() {
 	Priority4();
 	ReadLexeme();
 	while (curLexeme_.string == "==" || curLexeme_.string == "!=") {
@@ -313,7 +312,7 @@ void Parser::Priority3() {
 	this->MovePtr(-1);
 }
 
-void Parser::Priority4() {
+Poliz Parser::Priority4() {
 	Priority5();
 	ReadLexeme();
 	while (curLexeme_.string == ">=" || curLexeme_.string == "<=" || curLexeme_.string == "<" || curLexeme_.string == ">") {
@@ -324,7 +323,7 @@ void Parser::Priority4() {
 	this->MovePtr(-1);
 }
 
-void Parser::Priority5() {
+Poliz Parser::Priority5() {
 	Priority6();
 	ReadLexeme();
 	while (curLexeme_.string == "+" || curLexeme_.string == "-") {
@@ -335,7 +334,7 @@ void Parser::Priority5() {
 	this->MovePtr(-1);
 }
 
-void Parser::Priority6() {
+Poliz Parser::Priority6() {
 	Priority7();
 	ReadLexeme();
 	while (curLexeme_.string == "*" || curLexeme_.string == "/" || curLexeme_.string == "//" || curLexeme_.string == "%") {
@@ -346,7 +345,7 @@ void Parser::Priority6() {
 	this->MovePtr(-1);
 }
 
-void Parser::Priority7() {
+Poliz Parser::Priority7() {
 	if (curLexeme_.string == "-" || curLexeme_.string == "!") {
 		ReadLexeme();
 		Priority8();
@@ -356,7 +355,7 @@ void Parser::Priority7() {
 	}
 }
 
-void Parser::Priority8() {
+Poliz Parser::Priority8() {
 	if (curLexeme_.string == "(") {
 		ReadLexeme();
 		Priority1();
@@ -371,7 +370,7 @@ void Parser::Priority8() {
 }
 
 
-void Parser::FunctionCall() {
+Poliz Parser::FunctionCall() {
 	this->isInFuncCall = true;
 	try {
 		Name();
@@ -394,7 +393,7 @@ void Parser::FunctionCall() {
 		passedParams = Arguments();
 	}
 	else {
-		return;
+		return Poliz();
 	}
 	ReadLexeme();
 	if (curLexeme_.string != ")") {
@@ -421,17 +420,17 @@ int Parser::Arguments() {
 	return numArgs;
 }
 
-void Parser::Container() {
+Poliz Parser::Container() {
 	MultivariateAnalyse({&Parser::FunctionCall, &Parser::List, &Parser::String });
 }
 
-void Parser::String() {
+Poliz Parser::String() {
 	if (curLexeme_.type != ELexemeType::LiteralStr && curLexeme_.type != ELexemeType::LiteralChar) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid string literal");
 	}
 }
 
-void Parser::Name() {
+Poliz Parser::Name() {
 	if (curLexeme_.type == ELexemeType::Keyword) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "variable can not be named by keyword");
 	}
@@ -452,28 +451,27 @@ void Parser::Name() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "undefined variable");
 	}
 	this->lastReadName = curLexeme_.string;
-    if (isInFuncCall) {
-        poliz.addEntryToBlock(PolizCmd::Call, curLexeme_.string);
-    }
-    if (isInAssign) {
-        poliz.addEntryToBlock(PolizCmd::Call, curLexeme_.string);
-    }
+//    if (isInFuncCall) {
+//        poliz.addEntryToBlock(PolizCmd::Call, curLexeme_.string);
+//    } else {
+//        poliz.addEntryToBlock(PolizCmd::Var, curLexeme_.string);
+//    }
 }
 
-void Parser::Num() {
+Poliz Parser::Num() {
 	if (curLexeme_.type != ELexemeType::LiteralDouble && curLexeme_.type != ELexemeType::LiteralNum32 && curLexeme_.type != ELexemeType::LiteralNum64) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid number");
 	}
-//    poliz.entryBlock.emplace_back(PolizCmd::Const, curLexeme_.string);
-    poliz.addEntryToBlock(PolizCmd::Const, curLexeme_.string);
+//    poliz.addEntryToBlock(PolizCmd::Const, curLexeme_.string);
 }
 
-void Parser::List() {
+Poliz Parser::List() {
 	MultivariateAnalyse({ &Parser::TemporaryList, &Parser::Name });
 }
 
-void Parser::ListElement() {
+Poliz Parser::ListElement() {
 	Name();
+//    poliz.changeEntryCmdInBlock(poliz.GetCurAddress(), PolizCmd::ArrayAccess);
 	ReadLexeme();
 	if (curLexeme_.string != "[") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected opening box bracket in getting list element");
@@ -486,12 +484,12 @@ void Parser::ListElement() {
 	}
 }
 
-void Parser::Exp() {
+Poliz Parser::Exp() {
 	MultivariateAnalyse({/*&Parser::VariableDeclaration, &Parser::ListDeclaration,*/ &Parser::FunctionCall,
 						 &Parser::SpecialOperators, &Parser::ConditionalSpecialOperators, &Parser::Assign, &Parser::Return }, true);
 }
 
-void Parser::Return() {
+Poliz Parser::Return() {
 	if (curLexeme_.string != "return") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid return operator");
 	}
@@ -504,28 +502,25 @@ void Parser::Return() {
 	}
 }
 
-void Parser::Assign() {
+Poliz Parser::Assign() {
 	MultivariateAnalyse({ &Parser::ListElement, &Parser::Name }, false, true);
 	string newVar = "";
 	bool flag = false;
 	if (curLexeme_.type == ELexemeType::Variable) {
 		newVar = curLexeme_.string;
 		flag = true;
-//        poliz.entryBlock.emplace_back(PolizCmd::Var, curLexeme_.string);
-        poliz.addEntryToBlock(PolizCmd::Var, curLexeme_.string);
 	}
 	ReadLexeme();
 	if (curLexeme_.string != "=") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid assignment operator");
 	}
 
-    poliz.addEntryBlockToPoliz();
+//    poliz.addEntryBlockToPoliz();
 
 	ReadLexeme();
 	ValueExp();
 
-//    poliz.entryBlock.emplace_back(PolizCmd::Operation, "=");
-    poliz.addEntryToBlock(PolizCmd::Operation, "=");
+//    poliz.addEntryToBlock(PolizCmd::Operation, "=");
 	if (flag) {
 		this->currentScope->InsertVariable(newVar);
 	}
@@ -548,7 +543,7 @@ void Parser::VariableDeclaration() {
 
 }
 
-void Parser::TemporaryList() {
+Poliz Parser::TemporaryList() {
 	if (curLexeme_.string != "[") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected opening box bracket in list declaration");
 	}
@@ -562,11 +557,11 @@ void Parser::TemporaryList() {
 	}
 }
 
-void Parser::SpecialOperators() {
+Poliz Parser::SpecialOperators() {
 	MultivariateAnalyse({ &Parser::InputOperator, &Parser::OutputOperator });
 }
 
-void Parser::InputOperator() {
+Poliz Parser::InputOperator() {
 	if (curLexeme_.string != "read") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid input operator");
 	}
@@ -582,7 +577,7 @@ void Parser::InputOperator() {
 	}
 }
 
-void Parser::OutputOperator() {
+Poliz Parser::OutputOperator() {
 	if (curLexeme_.string != "print") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid output operator");
 	}
@@ -598,15 +593,15 @@ void Parser::OutputOperator() {
 	}
 }
 
-void Parser::InputArguments() {
+Poliz Parser::InputArguments() {
 	MultivariateAnalyse({ &Parser::Name, &Parser::ListElement });
 }
 
-void Parser::ConditionalSpecialOperators() {
+Poliz Parser::ConditionalSpecialOperators() {
 	MultivariateAnalyse({ &Parser::For, &Parser::While, &Parser::If });
 }
 
-void Parser::If() {
+Poliz Parser::If() {
 	if (curLexeme_.string != "if") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid if operator");
 	}
@@ -631,7 +626,7 @@ void Parser::If() {
 	}
 }
 
-void Parser::Else() {
+Poliz Parser::Else() {
 	if (curLexeme_.string != "else") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid else operator");
 	}
@@ -639,7 +634,7 @@ void Parser::Else() {
 	MultivariateAnalyse({ &Parser::Block, &Parser::If });
 }
 
-void Parser::For() {
+Poliz Parser::For() {
 	if (curLexeme_.string != "for") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid for operator");
 	}
@@ -666,7 +661,7 @@ void Parser::For() {
 	Block();
 }
 
-void Parser::While() {
+Poliz Parser::While() {
 	if (curLexeme_.string != "while") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid while operator");
 	}
@@ -684,7 +679,7 @@ void Parser::While() {
 	Block();
 }
 
-void Parser::MultivariateAnalyse(const std::vector<void (Parser::*)()>& variants, bool isCheckEndLineSymbol, bool isAssign) {
+Poliz Parser::MultivariateAnalyse(const std::vector<Poliz (Parser::*)()>& variants, bool isCheckEndLineSymbol, bool isAssign) {
 	int64_t pos = (int64_t)this->currentLexemeIdx - 1;
 	bool flag = true;
 	ParserException exception_(ELexemeType::Null, "", -1, "", 0);
@@ -710,11 +705,11 @@ void Parser::MultivariateAnalyse(const std::vector<void (Parser::*)()>& variants
 					deepestException = exception;
 				}
 			}
-            poliz.clearEntryBlock();
+//            poliz.clearEntryBlock();
 			continue;
 		}
 		flag = false;
-        poliz.addEntryBlockToPoliz();
+//        poliz.addEntryBlockToPoliz();
 		break;
 	}
 	this->isInAssign = false;

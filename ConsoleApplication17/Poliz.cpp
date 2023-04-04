@@ -22,21 +22,7 @@ int Poliz::GetReturnAddress() {
     return returnAddress;
 }
 
-void Poliz::addEntry(PolizCmd operation, std::string& operand) {
+void Poliz::addEntry(PolizCmd operation, std::string operand) {
     poliz.emplace_back( poliz.empty() ? 0 : poliz.back().id + 1, operation, operand);
 }
 
-void Poliz::addEntryBlockToPoliz() {
-    for (auto elem : entryBlock) {
-        addEntry(elem.first, elem.second);
-    }
-    entryBlock.clear();
-}
-
-void Poliz::addEntryToBlock(PolizCmd operation, std::string operand) {
-    entryBlock.emplace_back(operation, operand);
-}
-
-void Poliz::clearEntryBlock() {
-    entryBlock.clear();
-}

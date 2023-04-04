@@ -68,46 +68,52 @@ private:
 
     void ClassBlock();
     void ClassStatement();
+
 	void ReadLexeme();
-	void Program();
-	void Function();
+
+	Poliz Program();
+    Poliz Function();
+
 	std::set<string> FunctionArgumentsDeclaration();
-	void Block();
-	void Statement();
-	void ValueExp();
-	void Operand();
-	void Value();
-	void Priority1();
-	void Priority2();
-	void Priority3();
-	void Priority4();
-	void Priority5();
-	void Priority6();
-	void Priority7();
-	void Priority8();
-	void FunctionCall();
+
+    Poliz Block();
+    Poliz Statement();
+    Poliz ValueExp();
+    Poliz Operand();
+    Poliz Value();
+    Poliz Priority1();
+    Poliz Priority2();
+    Poliz Priority3();
+    Poliz Priority4();
+    Poliz Priority5();
+    Poliz Priority6();
+    Poliz Priority7();
+    Poliz Priority8();
+    Poliz FunctionCall();
+
 	int Arguments();
-	void Container();
-	void String();
-	void Name();
-	void Num();
-	void List();
-	void ListElement();
-	void Exp();
-	void Return();
-	void Assign();
+
+    Poliz Container();
+    Poliz String();
+    Poliz Name();
+    Poliz Num();
+    Poliz List();
+    Poliz ListElement();
+    Poliz Exp();
+    Poliz Return();
+    Poliz Assign();
 	void VariableDeclaration();
-	void TemporaryList();
-	void SpecialOperators();
-	void InputOperator();
-	void OutputOperator();
-	void InputArguments();
-	void ConditionalSpecialOperators();
-	void If();
-	void Else();
-	void For();
-	void While();
-	void MultivariateAnalyse(const std::vector<void (Parser::*)()>& variants, bool isCheckEndLineSymbol = false, bool isAssign = false);
+    Poliz TemporaryList();
+    Poliz SpecialOperators();
+    Poliz InputOperator();
+    Poliz OutputOperator();
+    Poliz InputArguments();
+    Poliz ConditionalSpecialOperators();
+    Poliz If();
+    Poliz Else();
+    Poliz For();
+    Poliz While();
+    Poliz MultivariateAnalyse(const std::vector<Poliz (Parser::*)()>& variants, bool isCheckEndLineSymbol = false, bool isAssign = false);
 	
 	bool FunctionExists(string name) {
 		return this->declaredFunctions.find(name) != this->declaredFunctions.end();

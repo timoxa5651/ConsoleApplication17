@@ -1,5 +1,5 @@
 
 function main(){
-    x = 1;
-    y = x;
+    arr = [];
+    arr[1] = 0;
 }
