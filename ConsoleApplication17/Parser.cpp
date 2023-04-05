@@ -793,9 +793,9 @@ Poliz Parser::While() {
 	ReadLexeme();
 	auto block = Block();
     int jumpAddress = 0;
-    val.addEntry(PolizCmd::Jz, std::to_string(val.GetSize() + block.GetSize() + 1));
+    val.addEntry(PolizCmd::Jz, std::to_string(block.GetSize() + 2));
     val += block;
-    val.addEntry(PolizCmd::Jump, std::to_string(jumpAddress - val.GetSize() + 1));
+    val.addEntry(PolizCmd::Jump, std::to_string(jumpAddress - val.GetSize()));
     return val;
 }
 

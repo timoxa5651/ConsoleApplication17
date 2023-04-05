@@ -3,12 +3,7 @@ function f(){
 }
 
 function main(){
-  a = f();
-  if(a == 0){
-        a = 1;
-  } else if(1==0){
-    c = 3;
-  } else{
-    h = 5;
-  }
+    while(1 == 0){
+
+    }
 }
