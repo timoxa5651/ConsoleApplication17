@@ -431,10 +431,12 @@ Poliz Parser::FunctionCall() {
 	ReadLexeme();
 	int passedParams = 0;
     std::pair<int, Poliz> args;
+    Poliz res;
 	if (curLexeme_.string != ")") {
         args = Arguments();
 		passedParams = args.first;
-        funcName += args.second;
+        res += args.second;
+        res += funcName;
 	}
 	else {
 		return funcName;
@@ -448,7 +450,7 @@ Poliz Parser::FunctionCall() {
 	if (dFunc.numArgs != passedParams) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid arguments " + std::to_string(passedParams) + " != " + std::to_string(dFunc.numArgs));
 	}
-    return funcName;
+    return res;
 }
 
 std::pair<int, Poliz> Parser::Arguments() {
@@ -553,14 +555,13 @@ Poliz Parser::Return() {
 	}
 	ReadLexeme();
     Poliz val;
-    val.addEntry(PolizCmd::Ret, "");
 	if (curLexeme_.string != ";") {
 		val += ValueExp();
 	}
 	else {
-        val.addEntry(PolizCmd::Null, "Null");
 		this->MovePtr(-1);
 	}
+    val.addEntry(PolizCmd::Ret, "");
     return val;
 }
 
