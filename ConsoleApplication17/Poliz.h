@@ -18,11 +18,16 @@ enum class PolizCmd{
     Str,
     Call,
     Jump,
-    Jl,
+    Jz,
     Je,
+    Jge,
     Array,
     Operation,
-    ArrayAccess
+    ArrayAccess,
+    ArraySize,
+    UnOperation,
+    Ret,
+    Null
 };
 
 inline std::string PolizCmdToStr(PolizCmd cmd){
@@ -32,17 +37,23 @@ inline std::string PolizCmdToStr(PolizCmd cmd){
         case PolizCmd::Str:             return "Str";
         case PolizCmd::Call:            return "Call";
         case PolizCmd::Jump:            return "Jump";
-        case PolizCmd::Jl:              return "Jl";
+        case PolizCmd::Jz:              return "Jz";
         case PolizCmd::Je:              return "Je";
+        case PolizCmd::Jge:             return "Jge";
         case PolizCmd::Array:           return "Array";
         case PolizCmd::ArrayAccess:     return "ArrayAccess";
+        case PolizCmd::ArraySize:       return "ArraySize";
         case PolizCmd::Operation:       return "Operation";
+        case PolizCmd::UnOperation:     return "UnOperation";
+        case PolizCmd::Ret:             return "Ret";
+        case PolizCmd::Null:            return "Null";
+        default:                        return "[Unknown cmd]";
     }
 }
 
 class PolizEntry{
 public:
-    PolizEntry(int id, PolizCmd cmd, std::string operand){
+    PolizEntry(int id, PolizCmd cmd, const std::string& operand){
         this->id = id;
         this->cmd = cmd;
         this->operand = operand;
@@ -56,14 +67,14 @@ public:
 
 class Poliz {
     std::vector<PolizEntry> poliz;
-    std::map<std::string, int> functionsRegistry;
+    std::map<std::string, Poliz> functionsRegistry;
     std::vector<int> callStack;
 public:
 
     void changeEntryCmd(int address, PolizCmd cmd);
     void addEntry(PolizEntry entry);
     void addEntry(PolizCmd operation, std::string operand);
-    void addFunction(std::string name);
+    void addFunction(const std::string& name, Poliz& funcPoliz);
     void pushCallStack(int address);
     int getFunctionAddress(std::string name);
     int GetReturnAddress();
@@ -71,7 +82,8 @@ public:
     int GetSize() { return poliz.size(); };
 
 
-    void Print();
+    void PrintPoliz() const;
+    void PrintFuncRegistry() const;
 
 
     Poliz& operator = (const Poliz& other){

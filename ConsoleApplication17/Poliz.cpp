@@ -4,8 +4,8 @@
 
 #include "Poliz.h"
 
-void Poliz::addFunction(std::string name) {
-    functionsRegistry.insert({name, poliz.size()});
+void Poliz::addFunction(const std::string& name, Poliz& funcPoliz) {
+    functionsRegistry.insert({name, funcPoliz});
 }
 
 void Poliz::pushCallStack(int address) {
@@ -13,7 +13,8 @@ void Poliz::pushCallStack(int address) {
 }
 
 int Poliz::getFunctionAddress(std::string name) {
-    return functionsRegistry[name];
+    //return functionsRegistry[name];
+    return 0;
 }
 
 int Poliz::GetReturnAddress() {
@@ -35,16 +36,21 @@ void Poliz::changeEntryCmd(int address, PolizCmd cmd) {
     poliz[address].cmd = cmd;
 }
 
-void Poliz::Print() {
+void Poliz::PrintPoliz() const {
     std::cout << "Poliz\n";
     int cnt = 0;
     for (auto& elem : poliz) {
         std::cout << cnt++ << "\t" << PolizCmdToStr(elem.cmd) << " " << elem.operand << '\n';
     }
-    std::cout << "\nFunction registry\n";
-    for (auto& elem : functionsRegistry) {
-        std::cout << elem.first << " " << elem.second << "\n";
-    }
+}
 
+void Poliz::PrintFuncRegistry() const {
+    std::cout << "\nFunc registry\n";
+    std::cout << "________________________\n";
+    for (const auto& func : functionsRegistry) {
+        std::cout << "Name\t" << func.first << '\n';
+        func.second.PrintPoliz();
+        std::cout << "________________________\n";
+    }
 }
 

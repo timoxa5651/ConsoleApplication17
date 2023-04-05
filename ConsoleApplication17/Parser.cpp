@@ -66,7 +66,8 @@ bool Parser::Check(CompilationResult* result) {
 	try {
 		//ReadLexeme();
 		poliz = Program();
-        poliz.Print();
+        poliz.PrintPoliz();
+        poliz.PrintFuncRegistry();
 	}
 	catch (ParserException& exception) {
 		if (exception.lexemeNum < deepestException.lexemeNum) {
@@ -146,7 +147,7 @@ Poliz Parser::Program() {
                 if (this->FunctionExists(curLexeme_.string))
                     throw ParserException(curLexeme_, this->currentLexemeIdx,
                                           "function " + curLexeme_.string + " declared multiple times");
-                programPoliz.addFunction(curLexeme_.string);
+                //programPoliz.addFunction(curLexeme_.string);
                 if (curLexeme_.string == "main") {
                     ReadLexeme();
                     if (curLexeme_.string != "(") {
@@ -165,7 +166,10 @@ Poliz Parser::Program() {
                     break;
                 } else {
                     //ReadLexeme();
-                    programPoliz += Function();
+                    std::string funcName = curLexeme_.string;
+                    auto func = Function();
+                    programPoliz.addFunction(funcName, func);
+//                    programPoliz += Function();
                     ReadLexeme();
                 }
             }
@@ -378,8 +382,11 @@ Poliz Parser::Priority6() {
 
 Poliz Parser::Priority7() {
 	if (curLexeme_.string == "-" || curLexeme_.string == "!") {
+        auto cmd = curLexeme_.string;
 		ReadLexeme();
-		Priority8();
+		auto operand = Priority8();
+        operand.addEntry(PolizCmd::UnOperation, cmd);
+        return operand;
 	}
 	else {
         return Priority8();
@@ -423,9 +430,11 @@ Poliz Parser::FunctionCall() {
 	}
 	ReadLexeme();
 	int passedParams = 0;
+    std::pair<int, Poliz> args;
 	if (curLexeme_.string != ")") {
-        auto args = Arguments();
+        args = Arguments();
 		passedParams = args.first;
+        funcName += args.second;
 	}
 	else {
 		return funcName;
@@ -464,6 +473,9 @@ Poliz Parser::String() {
 	if (curLexeme_.type != ELexemeType::LiteralStr && curLexeme_.type != ELexemeType::LiteralChar) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid string literal");
 	}
+    Poliz res;
+    res.addEntry(PolizCmd::Str, "\"" + curLexeme_.string + "\"");
+    return res;
 }
 
 Poliz Parser::Name() {
@@ -540,12 +552,16 @@ Poliz Parser::Return() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid return operator");
 	}
 	ReadLexeme();
+    Poliz val;
+    val.addEntry(PolizCmd::Ret, "");
 	if (curLexeme_.string != ";") {
-		ValueExp();
+		val += ValueExp();
 	}
 	else {
+        val.addEntry(PolizCmd::Null, "Null");
 		this->MovePtr(-1);
 	}
+    return val;
 }
 
 Poliz Parser::Assign() {
@@ -626,11 +642,15 @@ Poliz Parser::InputOperator() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected opening bracket in function call");
 	}
 	ReadLexeme();
-	InputArguments();
+	auto inArg = InputArguments();
 	ReadLexeme();
 	if (curLexeme_.string != ")") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing bracket in function call");
 	}
+    Poliz res;
+    res.addEntry(PolizCmd::Call, "read");
+    res += inArg;
+    return res;
 }
 
 Poliz Parser::OutputOperator() {
@@ -642,15 +662,19 @@ Poliz Parser::OutputOperator() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected opening bracket in function call");
 	}
 	ReadLexeme();
-	Arguments();
+	auto args = Arguments();
 	ReadLexeme();
 	if (curLexeme_.string != ")") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing bracket in function call");
 	}
+    Poliz res;
+    res.addEntry(PolizCmd::Call, "print");
+    res += args.second;
+    return res;
 }
 
 Poliz Parser::InputArguments() {
-	MultivariateAnalyse({ &Parser::Name, &Parser::ListElement });
+	return MultivariateAnalyse({ &Parser::Name, &Parser::ListElement });
 }
 
 Poliz Parser::ConditionalSpecialOperators() {
@@ -674,7 +698,7 @@ Poliz Parser::If() {
 	ReadLexeme();
 	auto block = Block();
 	ReadLexeme();
-    val.addEntry(PolizCmd::Jl, std::to_string(val.GetSize() + block.GetSize() + 1));
+    val.addEntry(PolizCmd::Jz, std::to_string(val.GetSize() + block.GetSize() + 1));
     val += block;
 
     Poliz eBlock;
@@ -698,30 +722,57 @@ Poliz Parser::Else() {
 }
 
 Poliz Parser::For() {
+    Poliz res;
+    auto tmpVarName = "__arr" + std::to_string(nextTmpVarSuffix++) + "__";
 	if (curLexeme_.string != "for") {
+        --nextTmpVarSuffix;
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid for operator");
 	}
 	ReadLexeme();
 	if (curLexeme_.string != "(") {
+        --nextTmpVarSuffix;
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected opening bracket in for structure");
 	}
 
 	ReadLexeme();
 	this->isInAssign = true;
-	Name();
+	auto itr = Name();
 	this->isInAssign = false;
 	ReadLexeme();
 	if (curLexeme_.string != "in") {
+        --nextTmpVarSuffix;
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected keyword IN");
 	}
 	ReadLexeme();
-	Container();
+	auto container = Container();
 	ReadLexeme();
 	if (curLexeme_.string != ")") {
+        --nextTmpVarSuffix;
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing bracket in for structure");
 	}
 	ReadLexeme();
-	Block();
+	auto block = Block();
+
+
+    res.addEntry(PolizCmd::Var, tmpVarName);
+    res += container;
+    res.addEntry(PolizCmd::Operation, "=");
+    res += itr;
+    res.addEntry(PolizCmd::Const, "0");
+    res.addEntry(PolizCmd::Operation, "=");
+    int conditionFlag = res.GetSize();
+    res += itr;
+    res.addEntry(PolizCmd::ArraySize, tmpVarName);
+    res.addEntry(PolizCmd::Jge, std::to_string(block.GetSize() + itr.GetSize() * 2 + 5));
+    res += block;
+    res += itr;
+    res += itr;
+    res.addEntry(PolizCmd::Const, "1");
+    res.addEntry(PolizCmd::Operation, "+");
+    res.addEntry(PolizCmd::Operation, "=");
+    res.addEntry(PolizCmd::Jump, std::to_string(conditionFlag - res.GetSize()));
+    --nextTmpVarSuffix;
+    return res;
 }
 
 Poliz Parser::While() {
@@ -741,8 +792,9 @@ Poliz Parser::While() {
 	ReadLexeme();
 	auto block = Block();
     int jumpAddress = 0;
-    val.addEntry(PolizCmd::Jl, std::to_string(val.GetSize() + block.GetSize() + 1));
+    val.addEntry(PolizCmd::Jz, std::to_string(val.GetSize() + block.GetSize() + 1));
     val += block;
+    val.addEntry(PolizCmd::Jump, std::to_string(jumpAddress - val.GetSize() + 1));
     return val;
 }
 

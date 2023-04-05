@@ -63,6 +63,7 @@ private:
 	bool isInFuncCall = false;
 	string lastReadName;
     Poliz poliz;
+    int nextTmpVarSuffix = 0;
 
 	void MovePtr(int idx);
 
