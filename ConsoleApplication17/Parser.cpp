@@ -699,7 +699,7 @@ Poliz Parser::If() {
 	ReadLexeme();
 	auto block = Block();
 	ReadLexeme();
-    val.addEntry(PolizCmd::Jz, std::to_string(val.GetSize() + block.GetSize() + 1));
+    val.addEntry(PolizCmd::Jz, std::to_string(block.GetSize() + 2));
     val += block;
 
     Poliz eBlock;
