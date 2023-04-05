@@ -9,6 +9,7 @@
 #include "string"
 #include "map"
 #include "stack"
+#include "iostream"
 
 
 enum class PolizCmd{
@@ -23,6 +24,21 @@ enum class PolizCmd{
     Operation,
     ArrayAccess
 };
+
+inline std::string PolizCmdToStr(PolizCmd cmd){
+    switch (cmd) {
+        case PolizCmd::Const:           return "Const";
+        case PolizCmd::Var:             return "Var";
+        case PolizCmd::Str:             return "Str";
+        case PolizCmd::Call:            return "Call";
+        case PolizCmd::Jump:            return "Jump";
+        case PolizCmd::Jl:              return "Jl";
+        case PolizCmd::Je:              return "Je";
+        case PolizCmd::Array:           return "Array";
+        case PolizCmd::ArrayAccess:     return "ArrayAccess";
+        case PolizCmd::Operation:       return "Operation";
+    }
+}
 
 class PolizEntry{
 public:
@@ -51,7 +67,11 @@ public:
     void pushCallStack(int address);
     int getFunctionAddress(std::string name);
     int GetReturnAddress();
-    int GetCurAddress() {return poliz.size() - 1; };
+    int GetCurAddress() {return int(poliz.size()) - 1; };
+    int GetSize() { return poliz.size(); };
+
+
+    void Print();
 
 
     Poliz& operator = (const Poliz& other){
@@ -63,7 +83,7 @@ public:
         return *this;
     }
 
-    Poliz& operator += (Poliz other) {
+    Poliz& operator += (const Poliz& other) {
         for (auto& elem : other.poliz) {
             this->addEntry(elem);
         }
@@ -73,7 +93,7 @@ public:
         return *this;
     }
 
-    Poliz operator +(Poliz other) {
+    Poliz operator +(const Poliz& other) {
         Poliz res;
         for (auto& elem : this->poliz) {
             res.addEntry(elem);
@@ -81,11 +101,15 @@ public:
         for (auto& elem : other.poliz) {
             res.addEntry(elem);
         }
+        for (auto& elem : this->callStack) {
+            res.callStack.push_back(elem);
+        }
         for (auto& elem : other.callStack) {
             res.callStack.push_back(elem);
         }
         return res;
     }
+
 
 };
 

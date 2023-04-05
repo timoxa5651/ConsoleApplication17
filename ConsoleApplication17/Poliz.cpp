@@ -35,3 +35,16 @@ void Poliz::changeEntryCmd(int address, PolizCmd cmd) {
     poliz[address].cmd = cmd;
 }
 
+void Poliz::Print() {
+    std::cout << "Poliz\n";
+    int cnt = 0;
+    for (auto& elem : poliz) {
+        std::cout << cnt++ << "\t" << PolizCmdToStr(elem.cmd) << " " << elem.operand << '\n';
+    }
+    std::cout << "\nFunction registry\n";
+    for (auto& elem : functionsRegistry) {
+        std::cout << elem.first << " " << elem.second << "\n";
+    }
+
+}
+

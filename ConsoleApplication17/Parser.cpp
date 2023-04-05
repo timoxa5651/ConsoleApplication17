@@ -66,6 +66,7 @@ bool Parser::Check(CompilationResult* result) {
 	try {
 		//ReadLexeme();
 		poliz = Program();
+        poliz.Print();
 	}
 	catch (ParserException& exception) {
 		if (exception.lexemeNum < deepestException.lexemeNum) {
@@ -653,7 +654,7 @@ Poliz Parser::InputArguments() {
 }
 
 Poliz Parser::ConditionalSpecialOperators() {
-	MultivariateAnalyse({ &Parser::For, &Parser::While, &Parser::If });
+    return MultivariateAnalyse({ &Parser::For, &Parser::While, &Parser::If });
 }
 
 Poliz Parser::If() {
@@ -665,20 +666,27 @@ Poliz Parser::If() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected opening bracket in if structure");
 	}
 	ReadLexeme();
-	ValueExp();
+	auto val = ValueExp();
 	ReadLexeme();
 	if (curLexeme_.string != ")") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing bracket in if structure");
 	}
 	ReadLexeme();
-	Block();
+	auto block = Block();
 	ReadLexeme();
+    val.addEntry(PolizCmd::Jl, std::to_string(val.GetSize() + block.GetSize() + 1));
+    val += block;
+
+    Poliz eBlock;
 	if (curLexeme_.string == "else") {
-		Else();
+        eBlock = Else();
 	}
 	else {
 		this->MovePtr(-1);
 	}
+    val.addEntry(PolizCmd::Jump, std::to_string(eBlock.GetSize() + 1));
+    val += eBlock;
+    return val;
 }
 
 Poliz Parser::Else() {
@@ -686,7 +694,7 @@ Poliz Parser::Else() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid else operator");
 	}
 	ReadLexeme();
-	MultivariateAnalyse({ &Parser::Block, &Parser::If });
+	return MultivariateAnalyse({ &Parser::Block, &Parser::If });
 }
 
 Poliz Parser::For() {
@@ -725,13 +733,17 @@ Poliz Parser::While() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected opening bracket in while structure");
 	}
 	ReadLexeme();
-	ValueExp();
+	auto val = ValueExp();
 	ReadLexeme();
 	if (curLexeme_.string != ")") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing bracket in while structure");
 	}
 	ReadLexeme();
-	Block();
+	auto block = Block();
+    int jumpAddress = 0;
+    val.addEntry(PolizCmd::Jl, std::to_string(val.GetSize() + block.GetSize() + 1));
+    val += block;
+    return val;
 }
 
 Poliz Parser::MultivariateAnalyse(const std::vector<Poliz (Parser::*)()>& variants, bool isCheckEndLineSymbol, bool isAssign) {
