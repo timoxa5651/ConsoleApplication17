@@ -3,7 +3,7 @@ function f(){
 }
 
 function main(){
-    while(1 == 0){
+    for (i in f()){
 
     }
 }

@@ -540,7 +540,7 @@ Poliz Parser::ListElement() {
 	if (curLexeme_.string != "]") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing box bracket in getting list element");
 	}
-    auto res = arrayName + index;
+    auto res = index + arrayName;
     return res;
 }
 
@@ -724,7 +724,8 @@ Poliz Parser::Else() {
 
 Poliz Parser::For() {
     Poliz res;
-    auto tmpVarName = "__arr" + std::to_string(nextTmpVarSuffix++) + "__";
+    auto tmpVarName = "__arr" + std::to_string(nextTmpVarSuffix) + "__";
+    auto tmpItrName = "__itr" + std::to_string(nextTmpVarSuffix++) + "__";
 	if (curLexeme_.string != "for") {
         --nextTmpVarSuffix;
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid for operator");
@@ -758,16 +759,25 @@ Poliz Parser::For() {
     res.addEntry(PolizCmd::Var, tmpVarName);
     res += container;
     res.addEntry(PolizCmd::Operation, "=");
-    res += itr;
+//    res += itr;
+    res.addEntry(PolizCmd::Var, tmpItrName);
     res.addEntry(PolizCmd::Const, "0");
     res.addEntry(PolizCmd::Operation, "=");
+
     int conditionFlag = res.GetSize();
-    res += itr;
+
+    res.addEntry(PolizCmd::Var, tmpItrName);
     res.addEntry(PolizCmd::ArraySize, tmpVarName);
-    res.addEntry(PolizCmd::Jge, std::to_string(block.GetSize() + itr.GetSize() * 2 + 5));
+    res.addEntry(PolizCmd::Jge, std::to_string(block.GetSize() + itr.GetSize() + 10));
+
+    res += itr;
+    res.addEntry(PolizCmd::Var, tmpItrName);
+    res.addEntry(PolizCmd::ArrayAccess, tmpVarName);
+    res.addEntry(PolizCmd::Operation, "=");
+
     res += block;
-    res += itr;
-    res += itr;
+    res.addEntry(PolizCmd::Var, tmpItrName);
+    res.addEntry(PolizCmd::Var, tmpItrName);
     res.addEntry(PolizCmd::Const, "1");
     res.addEntry(PolizCmd::Operation, "+");
     res.addEntry(PolizCmd::Operation, "=");
