@@ -1,9 +1,7 @@
-function f(){
+function f(x, y){
 
 }
 
 function main(){
-    for (i in f()){
-
-    }
+    f(1, 2);
 }

@@ -435,6 +435,7 @@ Poliz Parser::FunctionCall() {
 	if (curLexeme_.string != ")") {
         args = Arguments();
 		passedParams = args.first;
+        args.second.Reverse();
         res += args.second;
         res += funcName;
 	}
@@ -621,8 +622,9 @@ Poliz Parser::TemporaryList() {
 		args = Arguments();
 		ReadLexeme();
 	}
-    res.addEntry(PolizCmd::Array, std::to_string(args.first));
+    args.second.Reverse();
     res += args.second;
+    res.addEntry(PolizCmd::Array, std::to_string(args.first));
 
 	if (curLexeme_.string != "]") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing box bracket in list declaration");

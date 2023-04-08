@@ -54,3 +54,7 @@ void Poliz::PrintFuncRegistry() const {
     }
 }
 
+void Poliz::Reverse() {
+    std::reverse(poliz.begin(), poliz.end());
+}
+

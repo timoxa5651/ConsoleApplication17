@@ -10,6 +10,7 @@
 #include "map"
 #include "stack"
 #include "iostream"
+#include "algorithm"
 
 
 enum class PolizCmd{
@@ -76,6 +77,7 @@ public:
     void addEntry(PolizCmd operation, std::string operand);
     void addFunction(const std::string& name, Poliz& funcPoliz);
     void pushCallStack(int address);
+    void Reverse();
     int getFunctionAddress(std::string name);
     int GetReturnAddress();
     int GetCurAddress() {return int(poliz.size()) - 1; };
