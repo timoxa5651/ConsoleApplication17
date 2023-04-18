@@ -44,6 +44,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <EnableASAN>true</EnableASAN>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -204,6 +205,9 @@
     <ClCompile Include="ConsoleApplication17.cpp" />
     <ClCompile Include="Lexeme.cpp" />
     <ClCompile Include="Parser.cpp" />
+    <ClCompile Include="Poliz.cpp" />
+    <ClCompile Include="Precompile.cpp" />
+    <ClCompile Include="Runtime.cpp" />
     <ClCompile Include="Stream.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -304,6 +308,9 @@
     <ClInclude Include="OCompiler.h" />
     <ClInclude Include="Lexeme.h" />
     <ClInclude Include="Parser.h" />
+    <ClInclude Include="Poliz.h" />
+    <ClInclude Include="Precompile.h" />
+    <ClInclude Include="Runtime.h" />
     <ClInclude Include="Stream.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

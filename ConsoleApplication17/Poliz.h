@@ -1,9 +1,4 @@
-//
-// Created by Семён Чубенко on 24.03.2023.
-//
-
-#ifndef CONSOLEAPPLICATION17_POLIZ_H
-#define CONSOLEAPPLICATION17_POLIZ_H
+#pragma once
 
 #include "vector"
 #include "string"
@@ -13,7 +8,7 @@
 #include "algorithm"
 
 
-enum class PolizCmd{
+enum class PolizCmd {
     Const,
     Var,
     Str,
@@ -52,7 +47,7 @@ inline std::string PolizCmdToStr(PolizCmd cmd){
     }
 }
 
-class PolizEntry{
+class PolizEntry {
 public:
     PolizEntry(int id, PolizCmd cmd, const std::string& operand){
         this->id = id;
@@ -67,6 +62,8 @@ public:
 
 
 class Poliz {
+    friend class RuntimeCtx;
+
     std::vector<PolizEntry> poliz;
     std::map<std::string, Poliz> functionsRegistry;
     std::vector<int> callStack;
@@ -127,6 +124,3 @@ public:
 
 };
 
-
-
-#endif //CONSOLEAPPLICATION17_POLIZ_H

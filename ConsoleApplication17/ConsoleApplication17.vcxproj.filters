@@ -204,6 +204,15 @@
     <ClCompile Include="asmjit\src\asmjit\x86\x86rapass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Poliz.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Precompile.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="input.txt" />
@@ -492,6 +501,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="asmjit\src\asmjit\x86.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Poliz.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Precompile.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

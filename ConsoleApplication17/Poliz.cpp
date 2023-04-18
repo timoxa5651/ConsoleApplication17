@@ -1,5 +1,5 @@
 //
-// Created by Семён Чубенко on 24.03.2023.
+// Created by Семён Чурбенко on 24.03.2023.
 //
 
 #include "Poliz.h"
