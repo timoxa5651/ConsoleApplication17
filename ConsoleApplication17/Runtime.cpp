@@ -3,7 +3,6 @@
 #include "Parser.h"
 #include <cassert>
 
-#pragma region RuntimeMethod
 void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& poliz) {
 	std::vector<RuntimeInstr> cmd;
 
@@ -110,9 +109,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 		std::cout << std::endl;
 	}
 }
-#pragma endregion RuntimeMethod
 
-#pragma region RuntimeInstr
 std::string RuntimeInstr::GetParamString(RuntimeCtx* ctx, int idx) {
 	auto& value = this->params[idx];
 	if (value.type() == typeid(std::string))
@@ -129,9 +126,7 @@ std::string RuntimeInstr::GetParamString(RuntimeCtx* ctx, int idx) {
 		return ERuntimeCallType_ToString(std::any_cast<ERuntimeCallType>(value));
 	assert(false);
 }
-#pragma endregion RuntimeInstr
 
-#pragma region RuntimeCtx
 RuntimeCtx::RuntimeCtx() {
 	this->executor = new RuntimeExecutor();
 	Precompile::CreateTypes(this);
@@ -177,4 +172,3 @@ void RuntimeCtx::AddPoliz(Parser* parser, Poliz* root) {
 void RuntimeCtx::AddType(RuntimeType* type) {
 	this->regTypes[type->GetTID()] = type;
 }
-#pragma endregion RuntimeCtx

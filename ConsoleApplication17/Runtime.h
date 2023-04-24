@@ -60,6 +60,8 @@ inline ERuntimeCallType ERuntimeCallType_FromString(std::string str) {
 
 class RuntimeMethod;
 class RuntimeVar;
+class RuntimeCtx;
+
 enum class ERuntimeType {
 	Null,
 	//Int32, ))
@@ -180,7 +182,6 @@ private:
 	std::vector<std::any> params;
 };
 
-class RuntimeCtx;
 class RuntimeExecutor {
 private:
 	REG ip;
