@@ -433,7 +433,7 @@ Poliz Parser::FunctionCall() {
 	if (curLexeme_.string != ")") {
         args = Arguments();
 		passedParams = args.first;
-        args.second.Reverse();
+        //args.second.Reverse();
         res += args.second;
         res += funcName;
 	}
@@ -454,14 +454,22 @@ Poliz Parser::FunctionCall() {
 
 std::pair<int, Poliz> Parser::Arguments() {
 	int numArgs = 1;
-	auto param = ValueExp();
+    std::stack<Poliz> stackArgs;
+    stackArgs.push(ValueExp());
+//	auto param = ValueExp();
 	ReadLexeme();
 	while (curLexeme_.string == ",") {
 		ReadLexeme();
-		param += ValueExp();
+//		param += ValueExp();
+        stackArgs.push(ValueExp());
 		ReadLexeme();
 		numArgs += 1;
 	}
+    Poliz param;
+    while (!stackArgs.empty()) {
+        param += stackArgs.top();
+        stackArgs.pop();
+    }
 	this->MovePtr(-1);
 	return {numArgs, param};
 }
@@ -625,7 +633,7 @@ Poliz Parser::TemporaryList() {
 		args = Arguments();
 		ReadLexeme();
 	}
-    args.second.Reverse();
+//    args.second.Reverse();
     res += args.second;
     res.addEntry(PolizCmd::Array, std::to_string(args.first));
 

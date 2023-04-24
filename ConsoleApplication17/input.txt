@@ -1,4 +1,4 @@
-function hui(){
+function f(a, b){
     if(0){
         a = 1;
     }
@@ -6,5 +6,5 @@ function hui(){
 }
 
 function main(){
-    
+    arr = [f(1, 2), 3, 4];
 }
