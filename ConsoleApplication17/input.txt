@@ -1,7 +1,10 @@
-function f(x, y){
-
+function hui(){
+    if(0){
+        a = 1;
+    }
+    c = 0;
 }
 
 function main(){
-    f(1, 2);
+    
 }

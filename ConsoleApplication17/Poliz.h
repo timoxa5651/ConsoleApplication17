@@ -9,13 +9,13 @@
 
 
 enum class PolizCmd {
-    Const,
+    ConstInt,
+    ConstDbl,
     Var,
     Str,
     Call,
     Jump,
     Jz,
-    Je,
     Jge,
     Array,
     Operation,
@@ -28,13 +28,13 @@ enum class PolizCmd {
 
 inline std::string PolizCmdToStr(PolizCmd cmd){
     switch (cmd) {
-        case PolizCmd::Const:           return "Const";
+        case PolizCmd::ConstInt:        return "ConstInt";
+        case PolizCmd::ConstDbl:        return "ConstDbl";
         case PolizCmd::Var:             return "Var";
         case PolizCmd::Str:             return "Str";
         case PolizCmd::Call:            return "Call";
         case PolizCmd::Jump:            return "Jump";
         case PolizCmd::Jz:              return "Jz";
-        case PolizCmd::Je:              return "Je";
         case PolizCmd::Jge:             return "Jge";
         case PolizCmd::Array:           return "Array";
         case PolizCmd::ArrayAccess:     return "ArrayAccess";
@@ -59,7 +59,6 @@ public:
     PolizCmd cmd;
     std::string operand;
 };
-
 
 class Poliz {
     friend class RuntimeCtx;

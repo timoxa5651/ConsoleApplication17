@@ -45,11 +45,13 @@ struct DeclaredFunction {
 class CompilationResult;
 class FunctionScope;
 class Parser {
+	friend class Compiler;
 public:
 	explicit Parser(const vector<LexemeSyntax>& lexemes);
 	~Parser();
 
 	bool Check(CompilationResult* result);
+	std::set<DeclaredFunction> GetFunctions();
 private:
 	vector<Lexeme> input_;
 	int currentLexemeIdx;

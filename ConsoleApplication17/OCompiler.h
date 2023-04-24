@@ -52,15 +52,18 @@ public:
 	}
 };
 
+class RuntimeCtx;
 class Compiler
 {
 	Stream stream;
 	Parser* parser;
+	RuntimeCtx* runtime;
 public:
 	vector<LexemeSyntax> GetLexems(string inputFile);
 
 	Compiler() {
 		this->parser = nullptr;
+		this->runtime = nullptr;
 	}
 	~Compiler() {
 		if (this->parser) delete this->parser;

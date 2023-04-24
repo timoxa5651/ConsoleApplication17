@@ -9,11 +9,10 @@ RuntimeType* Precompile::Type_Null() {
 }
 
 RuntimeType* Precompile::Type_Int64() {
-	RuntimeType* type = new RuntimeType("Int64", ERuntimeType::Int64, 9);
+	RuntimeType* type = new RuntimeType("Int64", ERuntimeType::Int64, 8);
 	type->SetNativeCtor([](RuntimeVar* var, void* data) {
 		*(int64_t*)var->dataBlob = *(int64_t*)data;
 	});
-	//type->SetMethod
 	return type;
 }
 

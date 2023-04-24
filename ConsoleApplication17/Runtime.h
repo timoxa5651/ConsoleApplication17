@@ -7,20 +7,56 @@
 #include <array>
 #include <unordered_map>
 #include <stack>
+#include <any>
+#include <cassert>
+
 #include "Poliz.h"
 
 class Poliz;
+class Parser;
 
 using TID = uint64_t;
 using REG = uint64_t;
 using HashType = uint64_t;
+using Hash = std::hash<std::string>;
 #define INVALID_REG_VALUE ((uint64_t)-1)
 
 enum class ERuntimeCallType {
-	Ctor,
+	Invalid,
+
+	Assign,
+	Add,
+	Mult,
+	
+	CompareEq,
 
 	MAX
 };
+inline std::string ERuntimeCallType_ToString(ERuntimeCallType c) {
+	switch (c) {
+	case ERuntimeCallType::Assign: return "Assign";
+	case ERuntimeCallType::Add: return "Add";
+	case ERuntimeCallType::Mult: return "Mult";
+	case ERuntimeCallType::CompareEq: return "CompareEq";
+	}
+	return "";
+}
+inline ERuntimeCallType ERuntimeCallType_FromString(std::string str) {
+	if (str == "=") {
+		return ERuntimeCallType::Assign;
+	}
+	else if (str == "+") {
+		return ERuntimeCallType::Add;
+	}
+	else if (str == "*") {
+		return ERuntimeCallType::Mult;
+	}
+	else if (str == "==") {
+		return ERuntimeCallType::CompareEq;
+	}
+	assert(false);
+	return ERuntimeCallType::Invalid;
+}
 
 class RuntimeMethod;
 class RuntimeVar;
@@ -29,7 +65,6 @@ enum class ERuntimeType {
 	//Int32, ))
 	Int64,
 	Double,
-	Char,
 	String,
 	Array,
 
@@ -41,6 +76,7 @@ struct RuntimeParamPack {
 };
 class RuntimeType {
 private:
+	std::string name;
 	TID id;
 	ERuntimeType type;
 	uint32_t size;
@@ -64,8 +100,11 @@ public:
 	TID GetTID() {
 		return this->id;
 	}
+	std::string GetName() {
+		return this->name;
+	}
 
-	RuntimeType(std::string name, ERuntimeType type, uint32_t size) : size(size), id(std::hash<std::string>{}(name)), type(type) {
+	RuntimeType(std::string name, ERuntimeType type, uint32_t size) : size(size), name(name), id(std::hash<std::string>{}(name)), type(type) {
 		this->nativeCtor = nullptr;
 		vtable.fill(0);
 	}
@@ -80,16 +119,65 @@ public:
 class RuntimeMethod {
 public:
 	
-	RuntimeMethod() : va(INVALID_REG_VALUE) {}
-	static RuntimeMethod* FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& poliz);
+	RuntimeMethod(std::string name, int paramCnt) : va(INVALID_REG_VALUE), name(name), params(paramCnt) {}
+	void FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& poliz);
 
+	int GetParamCount() {
+		return this->params;
+	}
+	std::string GetName() {
+		return this->name;
+	}
 private:
+	std::string name;
+	int params;
+
 	REG va;
 };
 
+enum class RuntimeInstrType {
+	Invalid = 0,
+
+	Ctor = 1, // Ctor [ret] [tid] params...
+	Operation = 2, // Operation [ret] [operation(ERuntimeCallType)] param1 param2
+	Call = 3, // Call [ret] [func] params...
+
+};
+inline std::string RuntimeInstrType_ToString(RuntimeInstrType c) {
+	switch (c) {
+	case RuntimeInstrType::Invalid: return "Invalid";
+	case RuntimeInstrType::Ctor: return "Ctor";
+	case RuntimeInstrType::Operation: return "Operation";
+	case RuntimeInstrType::Call: return "Call";
+	}
+	return "";
+}
+
 struct RuntimeInstr {
-	PolizCmd type;
-	std::vector<std::string> param;
+	RuntimeInstrType opcode;
+
+	template<typename T>
+	void AddParam(T param) {
+		static_assert(std::is_same_v<T, std::string> || std::is_same_v<T, int64_t> || std::is_same_v<T, TID> || std::is_same_v<T, ERuntimeCallType>);
+		this->params.push_back(param);
+	}
+
+	template<typename T>
+	const T& GetParam(int idx) {
+		return std::any_cast<T>(this->params[idx]);
+	}
+	int GetParamCount() {
+		return this->params.size();
+	}
+	std::string GetReturnName() {
+		return this->GetParam<std::string>(0);
+	}
+
+	std::string GetParamString(RuntimeCtx* ctx, int idx);
+
+	RuntimeInstr(RuntimeInstrType op) : opcode(op) {}
+private:
+	std::vector<std::any> params;
 };
 
 class RuntimeCtx;
@@ -109,9 +197,11 @@ public:
 	RuntimeCtx();
 	~RuntimeCtx();
 
-	void AddPoliz(Poliz* root);
+	void AddPoliz(Parser* parser, Poliz* root);
 	void AddType(RuntimeType* type);
 	
+	RuntimeMethod* GetMethod(HashType methodName);
+	RuntimeType* GetType(TID methodName);
 
 	RuntimeInstr* GetInstr(REG idx);
 	REG AllocateFunction(size_t size);

@@ -1,4 +1,5 @@
 #include "OCompiler.h"
+#include "Runtime.h"
 
 CompilationResult::CompilationResult() {
 	this->wasOk = true;
@@ -193,6 +194,13 @@ CompilationResult* Compiler::Compile(string inputFile) {
 	if (!this->parser->Check(result)) {
 		return result;
 	}
+	this->parser->poliz.PrintPoliz();
+	this->parser->poliz.PrintFuncRegistry();
+
+	this->runtime = new RuntimeCtx();
+	this->runtime->AddPoliz(this->parser, &this->parser->poliz);
+
+	// this->runtime->GetMethod("main")->Invoke();
 
 	return result;
 }

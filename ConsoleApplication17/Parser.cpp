@@ -65,9 +65,7 @@ void Parser::MovePtr(int idx) {
 bool Parser::Check(CompilationResult* result) {
 	try {
 		//ReadLexeme();
-		poliz = Program();
-        poliz.PrintPoliz();
-        poliz.PrintFuncRegistry();
+		this->poliz = Program();
 	}
 	catch (ParserException& exception) {
 		if (exception.lexemeNum < deepestException.lexemeNum) {
@@ -517,7 +515,12 @@ Poliz Parser::Num() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid number");
 	}
     Poliz res;
-    res.addEntry(PolizCmd::Const, curLexeme_.string);
+	if (curLexeme_.type == ELexemeType::LiteralDouble) {
+		res.addEntry(PolizCmd::ConstDbl, curLexeme_.string);
+	}
+	else {
+		res.addEntry(PolizCmd::ConstInt, curLexeme_.string);
+	}
     return res;
 //    poliz.addEntryToBlock(PolizCmd::Const, curLexeme_.string);
 }
@@ -763,7 +766,7 @@ Poliz Parser::For() {
     res.addEntry(PolizCmd::Operation, "=");
 //    res += itr;
     res.addEntry(PolizCmd::Var, tmpItrName);
-    res.addEntry(PolizCmd::Const, "0");
+    res.addEntry(PolizCmd::ConstInt, "0");
     res.addEntry(PolizCmd::Operation, "=");
 
     int conditionFlag = res.GetSize();
@@ -780,7 +783,7 @@ Poliz Parser::For() {
     res += block;
     res.addEntry(PolizCmd::Var, tmpItrName);
     res.addEntry(PolizCmd::Var, tmpItrName);
-    res.addEntry(PolizCmd::Const, "1");
+    res.addEntry(PolizCmd::ConstInt, "1");
     res.addEntry(PolizCmd::Operation, "+");
     res.addEntry(PolizCmd::Operation, "=");
     res.addEntry(PolizCmd::Jump, std::to_string(conditionFlag - res.GetSize()));
@@ -850,4 +853,12 @@ Poliz Parser::MultivariateAnalyse(const std::vector<Poliz (Parser::*)()>& varian
     return correctBranch;
 }
 
-
+std::set<DeclaredFunction> Parser::GetFunctions() {
+	std::set<DeclaredFunction> rs;
+	for (auto& [ns, s] : this->declaredFunctions) {
+		for (auto& name : s) {
+			rs.insert(name);
+		}
+	}
+	return rs;
+}
