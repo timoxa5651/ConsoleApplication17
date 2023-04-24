@@ -5,6 +5,19 @@
 RuntimeMethod* RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& poliz) {
 	RuntimeMethod* method = new RuntimeMethod();
 
+	std::stack<PolizEntry> stack;
+	for(int i = 0; i < poliz.size(); ++i){
+		auto& entry = poliz[i];
+		bool isPush = entry.cmd == PolizCmd::Const;
+
+		if(isPush){
+			stack.push(entry);
+		}
+		else{
+			
+		}
+	}
+
 	return method;
 }
 #pragma endregion RuntimeMethod

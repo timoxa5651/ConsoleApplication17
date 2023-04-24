@@ -89,7 +89,7 @@ private:
 
 struct RuntimeInstr {
 	PolizCmd type;
-	std::string param;
+	std::vector<std::string> param;
 };
 
 class RuntimeCtx;
