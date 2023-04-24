@@ -9,6 +9,8 @@
 
 
 enum class PolizCmd {
+    Invalid,
+
     ConstInt,
     ConstDbl,
     Var,
@@ -69,6 +71,7 @@ class Poliz {
 public:
 
     void changeEntryCmd(int address, PolizCmd cmd);
+    PolizCmd getLastEntryType() { return poliz.empty() ? PolizCmd::Invalid : poliz[poliz.size() - 1].cmd; };
     void addEntry(PolizEntry entry);
     void addEntry(PolizCmd operation, std::string operand);
     void addFunction(const std::string& name, Poliz& funcPoliz);

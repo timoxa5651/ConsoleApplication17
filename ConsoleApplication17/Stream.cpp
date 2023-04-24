@@ -2,12 +2,12 @@
 
 ReadException::ReadException(int position, string message) {
 	this->position = position;
-	this->msg = message;
+	this->msg = message + " at pos " + std::to_string(position + 1);
 }
 
 
 const char* ReadException::what() const noexcept {
-	return (this->msg + " at pos " + std::to_string(position + 1)).c_str();
+	return this->msg.c_str();
 }
 
 

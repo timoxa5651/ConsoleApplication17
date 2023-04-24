@@ -1,10 +1,9 @@
 function f(a, b){
-    if(0){
-        a = 1;
+    while(a){
+        a = 0;
     }
-    c = 0;
 }
 
 function main(){
-    arr = [f(1, 2), 3, 4];
+    
 }

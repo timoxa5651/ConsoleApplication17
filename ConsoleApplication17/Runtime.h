@@ -26,8 +26,10 @@ enum class ERuntimeCallType {
 
 	Assign,
 	Add,
+	Sub,
 	Mult,
-	
+	Div,
+
 	CompareEq,
 
 	MAX
@@ -36,7 +38,9 @@ inline std::string ERuntimeCallType_ToString(ERuntimeCallType c) {
 	switch (c) {
 	case ERuntimeCallType::Assign: return "Assign";
 	case ERuntimeCallType::Add: return "Add";
+	case ERuntimeCallType::Sub: return "Sub";
 	case ERuntimeCallType::Mult: return "Mult";
+	case ERuntimeCallType::Div: return "Div";
 	case ERuntimeCallType::CompareEq: return "CompareEq";
 	}
 	return "";
@@ -47,6 +51,12 @@ inline ERuntimeCallType ERuntimeCallType_FromString(std::string str) {
 	}
 	else if (str == "+") {
 		return ERuntimeCallType::Add;
+	}
+	else if (str == "-") {
+		return ERuntimeCallType::Sub;
+	}
+	else if (str == "/") {
+		return ERuntimeCallType::Div;
 	}
 	else if (str == "*") {
 		return ERuntimeCallType::Mult;
@@ -143,7 +153,10 @@ enum class RuntimeInstrType {
 	Ctor = 1, // Ctor [ret] [tid] params...
 	Operation = 2, // Operation [ret] [operation(ERuntimeCallType)] param1 param2
 	Call = 3, // Call [ret] [func] params...
-
+	Array = 4, // Array [ret] params...
+	Jz = 5, // Jz [delta] [var]        // jumps If var == false!
+	Jmp = 6, // Jmp [delta]
+	Ret = 7, // Ret [value]
 };
 inline std::string RuntimeInstrType_ToString(RuntimeInstrType c) {
 	switch (c) {
@@ -151,6 +164,10 @@ inline std::string RuntimeInstrType_ToString(RuntimeInstrType c) {
 	case RuntimeInstrType::Ctor: return "Ctor";
 	case RuntimeInstrType::Operation: return "Operation";
 	case RuntimeInstrType::Call: return "Call";
+	case RuntimeInstrType::Array: return "Array";
+	case RuntimeInstrType::Jz: return "Jz";
+	case RuntimeInstrType::Jmp: return "Jmp";
+	case RuntimeInstrType::Ret: return "Ret";
 	}
 	return "";
 }
@@ -160,22 +177,27 @@ struct RuntimeInstr {
 
 	template<typename T>
 	void AddParam(T param) {
-//		static_assert(std::is_same_v<T, std::string> || std::is_same_v<T, int64_t> || std::is_same_v<T, TID> || std::is_same_v<T, ERuntimeCallType>);
+		static_assert(std::is_same_v<T, std::string> || std::is_same_v<T, int64_t> || std::is_same_v<T, HashType> || std::is_same_v<T, TID> || std::is_same_v<T, ERuntimeCallType>);
 		this->params.push_back(param);
 	}
 
 	template<typename T>
-	const T& GetParam(int idx) {
-		return std::any_cast<T>(this->params[idx]);
+	const T& GetParam(size_t idx) const {
+		return std::any_cast<const T&>(this->params[idx]);
 	}
-	int GetParamCount() {
+	template<typename T>
+	T& RefParam(size_t idx) {
+		return std::any_cast<T&>(this->params[idx]);
+	}
+
+	size_t GetParamCount() const {
 		return this->params.size();
 	}
-	std::string GetReturnName() {
+	std::string GetReturnName() const {
 		return this->GetParam<std::string>(0);
 	}
 
-	std::string GetParamString(RuntimeCtx* ctx, int idx);
+	std::string GetParamString(RuntimeCtx* ctx, size_t idx) const;
 
 	RuntimeInstr(RuntimeInstrType op) : opcode(op) {}
 private:

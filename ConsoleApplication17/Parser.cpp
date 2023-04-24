@@ -66,6 +66,9 @@ bool Parser::Check(CompilationResult* result) {
 	try {
 		//ReadLexeme();
 		this->poliz = Program();
+		if (this->poliz.getLastEntryType() != PolizCmd::Ret) {
+			this->poliz.addEntry(PolizCmd::Ret, "0");
+		}
 	}
 	catch (ParserException& exception) {
 		if (exception.lexemeNum < deepestException.lexemeNum) {
@@ -166,6 +169,9 @@ Poliz Parser::Program() {
                     //ReadLexeme();
                     std::string funcName = curLexeme_.string;
                     auto func = Function();
+					if (func.getLastEntryType() != PolizCmd::Ret) {
+						func.addEntry(PolizCmd::Ret, "0");
+					}
                     programPoliz.addFunction(funcName, func);
 //                    programPoliz += Function();
                     ReadLexeme();
@@ -573,7 +579,7 @@ Poliz Parser::Return() {
 	else {
 		this->MovePtr(-1);
 	}
-    val.addEntry(PolizCmd::Ret, "");
+    val.addEntry(PolizCmd::Ret, "1");
     return val;
 }
 
