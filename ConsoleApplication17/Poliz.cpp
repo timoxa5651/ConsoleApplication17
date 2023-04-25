@@ -45,7 +45,6 @@ void Poliz::PrintPoliz() const {
 }
 
 void Poliz::PrintFuncRegistry() const {
-    std::cout << "\nFunc registry\n";
     std::cout << "________________________\n";
     for (const auto& func : functionsRegistry) {
         std::cout << "Name\t" << func.first << '\n';

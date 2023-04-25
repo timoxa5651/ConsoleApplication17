@@ -16,7 +16,20 @@ RuntimeType* Precompile::Type_Int64() {
 	return type;
 }
 
+void Precompile::AddReservedMethods(RuntimeCtx* ctx) {
+	ctx->AddMethod(new RuntimeMethod("print", -1, [](RuntimeCtx* ctx, const std::vector<RuntimeVar*>& params) -> RuntimeVar* {
+		printf("Script: print called...\n");
+		return nullptr;
+	}));
+
+	ctx->AddMethod(new RuntimeMethod("read", -1, [](RuntimeCtx* ctx, const std::vector<RuntimeVar*>& params) -> RuntimeVar* {
+		return nullptr;
+	}));
+}
+
 void Precompile::CreateTypes(RuntimeCtx* ctx) {
 	ctx->AddType(Precompile::Type_Null());
 	ctx->AddType(Precompile::Type_Int64());
+
+	AddReservedMethods(ctx);
 }

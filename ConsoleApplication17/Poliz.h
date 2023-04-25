@@ -68,6 +68,8 @@ class Poliz {
     std::vector<PolizEntry> poliz;
     std::map<std::string, Poliz> functionsRegistry;
     std::vector<int> callStack;
+
+    void PrintPoliz() const;
 public:
 
     void changeEntryCmd(int address, PolizCmd cmd);
@@ -82,8 +84,6 @@ public:
     int GetCurAddress() {return int(poliz.size()) - 1; };
     int GetSize() { return poliz.size(); };
 
-
-    void PrintPoliz() const;
     void PrintFuncRegistry() const;
 
 

@@ -194,7 +194,7 @@ CompilationResult* Compiler::Compile(string inputFile) {
 	if (!this->parser->Check(result)) {
 		return result;
 	}
-	this->parser->poliz.PrintPoliz();
+	this->parser->poliz.addFunction("main", this->parser->poliz);
 	this->parser->poliz.PrintFuncRegistry();
 
 	this->runtime = new RuntimeCtx();

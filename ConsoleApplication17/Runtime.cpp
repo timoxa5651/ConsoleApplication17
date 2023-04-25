@@ -80,7 +80,15 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 			call.AddParam(entry.operand);
 
 			RuntimeMethod* def = ctx->GetMethod(Hash{}(entry.operand));
-			for (int i = 0; i < def->GetParamCount(); ++i) {
+			assert(def, "No registered method found");
+			int paramCount = def->GetParamCount();
+			if (paramCount < 0) {
+				PolizEntry paramCountDyn = stack.top();
+				stack.pop();
+				assert(paramCountDyn.cmd == PolizCmd::ConstInt);
+				paramCount = std::stoi(paramCountDyn.operand);
+			}
+			for (int i = 0; i < paramCount; ++i) {
 				PolizEntry pr = stack.top();
 				stack.pop();
 				call.AddParam(CreateScriptingInst(call, pr));
@@ -126,12 +134,11 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 			cmd.push_back(jmp);
 			break;
 		}
-
 		case PolizCmd::Ret: {
-			PolizEntry actionVar = stack.top();
 			bool hasValue = std::stoll(entry.operand) != 0;
 			RuntimeInstr ret(RuntimeInstrType::Ret);
 			if (hasValue) {
+				PolizEntry actionVar = stack.top();
 				ret.AddParam(CreateScriptingInst(ret, actionVar));
 			}
 			else {
@@ -183,6 +190,14 @@ std::string RuntimeInstr::GetParamString(RuntimeCtx* ctx, size_t idx) const {
 	assert(false);
 }
 
+
+
+RuntimeVar* RuntimeExecutor::CallMethod(RuntimeCtx* ctx, RuntimeMethod* method, const RuntimeParamPack& params) {
+
+	return nullptr;
+}
+
+
 RuntimeCtx::RuntimeCtx() {
 	this->executor = new RuntimeExecutor();
 	Precompile::CreateTypes(this);
@@ -215,16 +230,35 @@ void RuntimeCtx::AddPoliz(Parser* parser, Poliz* root) {
 	auto plist = parser->GetFunctions();
 
 	for (auto& func : plist) {
+		if (this->GetMethod(func.name)) {
+			continue; // don't override
+		}
 		RuntimeMethod* method = new RuntimeMethod(func.name, func.numArgs);
 		this->regMethods[Hash{}(func.name)] = method;
 	}
 
 	for (auto& [h, method] : this->regMethods) {
+		if (method->IsNative()) continue;
 		const auto& pz = root->functionsRegistry[method->GetName()];
+		std::cout << "--------            Generating method " << method->GetName() << std::endl;
 		method->FromPoliz(this, pz.poliz);
+		std::cout << std::endl;
 	}
+}
+
+int64_t RuntimeCtx::ExecuteRoot(std::string functionName) {
+	RuntimeMethod* method = this->GetMethod(functionName);
+	if (!method) {
+		return 1;
+	}
+	RuntimeVar* ret = this->executor->CallMethod(this, method, RuntimeParamPack());
+	
+
 }
 
 void RuntimeCtx::AddType(RuntimeType* type) {
 	this->regTypes[type->GetTID()] = type;
+}
+void RuntimeCtx::AddMethod(RuntimeMethod* method) {
+	this->regMethods[Hash{}(method->GetName())] = method;
 }

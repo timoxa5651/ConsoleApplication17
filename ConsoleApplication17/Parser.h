@@ -74,6 +74,7 @@ private:
 
 	void ReadLexeme();
 
+	void Precompile();
 	Poliz Program();
     Poliz Function();
 
@@ -107,9 +108,6 @@ private:
     Poliz Assign();
 	void VariableDeclaration();
     Poliz TemporaryList();
-    Poliz SpecialOperators();
-    Poliz InputOperator();
-    Poliz OutputOperator();
     Poliz InputArguments();
     Poliz ConditionalSpecialOperators();
     Poliz If();

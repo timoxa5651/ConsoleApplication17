@@ -63,6 +63,8 @@ void Parser::MovePtr(int idx) {
 }
 
 bool Parser::Check(CompilationResult* result) {
+	this->Precompile();
+
 	try {
 		//ReadLexeme();
 		this->poliz = Program();
@@ -109,6 +111,18 @@ void Parser::ClassBlock() {
 	this->currentScope = prevScope;
 }
 
+void Parser::Precompile() {
+	DeclaredFunction func;
+	func.name = "print";
+	func.numArgs = -1;
+	declaredFunctions[""].insert(func);
+
+	DeclaredFunction func2;
+	func2.name = "read";
+	func2.numArgs = -1;
+	declaredFunctions[""].insert(func2);
+}
+
 Poliz Parser::Program() {
     Poliz programPoliz;
 	try {
@@ -148,8 +162,10 @@ Poliz Parser::Program() {
                 if (this->FunctionExists(curLexeme_.string))
                     throw ParserException(curLexeme_, this->currentLexemeIdx,
                                           "function " + curLexeme_.string + " declared multiple times");
-                //programPoliz.addFunction(curLexeme_.string);
                 if (curLexeme_.string == "main") {
+					procFunction.numArgs = 0;
+					this->declaredFunctions[this->currentClass].insert(procFunction);
+
                     ReadLexeme();
                     if (curLexeme_.string != "(") {
                         throw ParserException(curLexeme_, this->currentLexemeIdx,
@@ -433,26 +449,37 @@ Poliz Parser::FunctionCall() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx - 1, "missed opening bracket in function call");
 	}
 	ReadLexeme();
+
+	const DeclaredFunction& dFunc = *this->declaredFunctions[this->currentClass].find(currentFunc);
 	int passedParams = 0;
     std::pair<int, Poliz> args;
     Poliz res;
 	if (curLexeme_.string != ")") {
-        args = Arguments();
+		args = Arguments();
 		passedParams = args.first;
-        //args.second.Reverse();
+		//args.second.Reverse();
+		if (dFunc.numArgs < 0) {
+			args.second.addEntry(PolizCmd::ConstInt, std::to_string(passedParams));
+		}
         res += args.second;
         res += funcName;
 	}
 	else {
-		return funcName;
+		if (dFunc.numArgs < 0) {
+			res.addEntry(PolizCmd::ConstInt, std::to_string(passedParams));
+		}
+		if (dFunc.numArgs >= 0 && dFunc.numArgs != passedParams) {
+			throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid arguments " + std::to_string(passedParams) + " != " + std::to_string(dFunc.numArgs));
+		}
+		res += funcName;
+		return res;
 	}
 	ReadLexeme();
 	if (curLexeme_.string != ")") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "missed closing bracket in function call");
 	}
 
-	const DeclaredFunction& dFunc = *this->declaredFunctions[this->currentClass].find(currentFunc);
-	if (dFunc.numArgs != passedParams) {
+	if (dFunc.numArgs >= 0 && dFunc.numArgs != passedParams) {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid arguments " + std::to_string(passedParams) + " != " + std::to_string(dFunc.numArgs));
 	}
     return res;
@@ -564,7 +591,7 @@ Poliz Parser::ListElement() {
 
 Poliz Parser::Exp() {
 	return MultivariateAnalyse({/*&Parser::VariableDeclaration, &Parser::ListDeclaration,*/ &Parser::FunctionCall,
-						 &Parser::SpecialOperators, &Parser::ConditionalSpecialOperators, &Parser::Assign, &Parser::Return }, true);
+						 &Parser::ConditionalSpecialOperators, &Parser::Assign, &Parser::Return }, true);
 }
 
 Poliz Parser::Return() {
@@ -646,50 +673,6 @@ Poliz Parser::TemporaryList() {
 	if (curLexeme_.string != "]") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing box bracket in list declaration");
 	}
-    return res;
-}
-
-Poliz Parser::SpecialOperators() {
-	return MultivariateAnalyse({ &Parser::InputOperator, &Parser::OutputOperator });
-}
-
-Poliz Parser::InputOperator() {
-	if (curLexeme_.string != "read") {
-		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid input operator");
-	}
-	ReadLexeme();
-	if (curLexeme_.string != "(") {
-		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected opening bracket in function call");
-	}
-	ReadLexeme();
-	auto inArg = InputArguments();
-	ReadLexeme();
-	if (curLexeme_.string != ")") {
-		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing bracket in function call");
-	}
-    Poliz res;
-    res.addEntry(PolizCmd::Call, "read");
-    res += inArg;
-    return res;
-}
-
-Poliz Parser::OutputOperator() {
-	if (curLexeme_.string != "print") {
-		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid output operator");
-	}
-	ReadLexeme();
-	if (curLexeme_.string != "(") {
-		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected opening bracket in function call");
-	}
-	ReadLexeme();
-	auto args = Arguments();
-	ReadLexeme();
-	if (curLexeme_.string != ")") {
-		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing bracket in function call");
-	}
-    Poliz res;
-    res.addEntry(PolizCmd::Call, "print");
-    res += args.second;
     return res;
 }
 

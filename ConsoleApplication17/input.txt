@@ -1,9 +1,7 @@
 function f(a, b){
-    while(a){
-        a = 0;
-    }
+    return 1;
 }
 
 function main(){
-    
+    print(10 + 2);
 }

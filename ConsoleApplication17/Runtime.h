@@ -24,19 +24,23 @@ using Hash = std::hash<std::string>;
 enum class ERuntimeCallType {
 	Invalid,
 
-	Assign,
+	Assign, // not called
+	TypeConvert,
+
 	Add,
 	Sub,
 	Mult,
 	Div,
 
 	CompareEq,
+	CompareGreaterEq,
 
 	MAX
 };
 inline std::string ERuntimeCallType_ToString(ERuntimeCallType c) {
 	switch (c) {
 	case ERuntimeCallType::Assign: return "Assign";
+	case ERuntimeCallType::TypeConvert: return "TypeConvert";
 	case ERuntimeCallType::Add: return "Add";
 	case ERuntimeCallType::Sub: return "Sub";
 	case ERuntimeCallType::Mult: return "Mult";
@@ -64,11 +68,15 @@ inline ERuntimeCallType ERuntimeCallType_FromString(std::string str) {
 	else if (str == "==") {
 		return ERuntimeCallType::CompareEq;
 	}
+	else if (str == ">=") {
+		return ERuntimeCallType::CompareGreaterEq;
+	}
 	assert(false);
 	return ERuntimeCallType::Invalid;
 }
 
 class RuntimeMethod;
+class RuntimeExecutor;
 class RuntimeVar;
 class RuntimeCtx;
 
@@ -128,10 +136,14 @@ public:
 	uint8_t* dataBlob;
 };
 
+using RuntimeMethodPtr = RuntimeVar*(*)(RuntimeCtx*, const std::vector<RuntimeVar*>&);
 class RuntimeMethod {
 public:
 	
-	RuntimeMethod(std::string name, int paramCnt) : va(INVALID_REG_VALUE), name(name), params(paramCnt) {}
+	RuntimeMethod(const std::string& name, int paramCnt) : va(INVALID_REG_VALUE), name(name), params(paramCnt), native(nullptr) {}
+	RuntimeMethod(const std::string& name, int paramCnt, RuntimeMethodPtr native) : RuntimeMethod(name, paramCnt) {
+		this->native = native;
+	}
 	void FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& poliz);
 
 	int GetParamCount() {
@@ -140,10 +152,12 @@ public:
 	std::string GetName() {
 		return this->name;
 	}
+	bool IsNative() { return this->native != nullptr; }
 private:
 	std::string name;
 	int params;
 
+	RuntimeMethodPtr native;
 	REG va;
 };
 
@@ -211,6 +225,8 @@ private:
 
 	RuntimeVar* ExecuteInstr(RuntimeCtx* ctx);
 public:
+	RuntimeExecutor() : ip(INVALID_REG_VALUE) {};
+
 	RuntimeVar* CallMethod(RuntimeCtx* ctx, RuntimeMethod* method, const RuntimeParamPack& params);
 };
 
@@ -222,12 +238,18 @@ public:
 
 	void AddPoliz(Parser* parser, Poliz* root);
 	void AddType(RuntimeType* type);
+	void AddMethod(RuntimeMethod* method);
 	
 	RuntimeMethod* GetMethod(HashType methodName);
+	RuntimeMethod* GetMethod(std::string methodName) {
+		return this->GetMethod(Hash{}(methodName));
+	}
 	RuntimeType* GetType(TID methodName);
 
 	RuntimeInstr* GetInstr(REG idx);
 	REG AllocateFunction(size_t size);
+
+	int64_t ExecuteRoot(std::string functionName);
 private:
 	std::map<HashType, RuntimeMethod*> regMethods;
 	std::map<TID, RuntimeType*> regTypes;
