@@ -164,6 +164,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 		base = addrMap[base] - i - 1;
 	}
 
+	//print
 	for (auto& instr : cmd) {
 		std::cout << RuntimeInstrType_ToString(instr.opcode) << "  ";
 		for (int i = 0; i < instr.GetParamCount(); ++i) {
@@ -171,6 +172,10 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 		}
 		std::cout << std::endl;
 	}
+
+	// insert fn
+	RuntimeInstr* alloc = ctx->AllocateFunction(cmd.size());
+	std::copy(cmd.data(), cmd.data() + cmd.size(), alloc);
 }
 
 std::string RuntimeInstr::GetParamString(RuntimeCtx* ctx, size_t idx) const {
@@ -190,10 +195,29 @@ std::string RuntimeInstr::GetParamString(RuntimeCtx* ctx, size_t idx) const {
 	assert(false);
 }
 
+const LocalVarState& RuntimeExecutor::GetLocal(std::string name) {
+	return LocalVarState{};
+}
 
+RuntimeVar* RuntimeExecutor::ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr) {
+	return nullptr;
+}
 
 RuntimeVar* RuntimeExecutor::CallMethod(RuntimeCtx* ctx, RuntimeMethod* method, const RuntimeParamPack& params) {
+	if (method->IsNative()) {
+		return method->NativeCall(ctx, params);
+	}
+	this->ip = method->GetVA();
 
+	// scripted
+	while (!this->isErrored) {
+		RuntimeInstr* instr = ctx->GetInstr(this->ip);
+		RuntimeVar* var = this->ExecuteInstr(ctx, instr);
+		if (instr->opcode == RuntimeInstrType::Ret) {
+			// handle Ret
+			return var;
+		}
+	}
 	return nullptr;
 }
 
@@ -251,9 +275,15 @@ int64_t RuntimeCtx::ExecuteRoot(std::string functionName) {
 	if (!method) {
 		return 1;
 	}
+	this->executor->Reset();
 	RuntimeVar* ret = this->executor->CallMethod(this, method, RuntimeParamPack());
-	
-
+	if (!ret) {
+		return 1;
+	}
+	if (ret->heldType->GetTypeEnum() != ERuntimeType::Int64) {
+		// cast...how
+	}
+	return ret->data.i64;
 }
 
 void RuntimeCtx::AddType(RuntimeType* type) {
@@ -261,4 +291,12 @@ void RuntimeCtx::AddType(RuntimeType* type) {
 }
 void RuntimeCtx::AddMethod(RuntimeMethod* method) {
 	this->regMethods[Hash{}(method->GetName())] = method;
+}
+
+RuntimeInstr* RuntimeCtx::AllocateFunction(size_t size) {
+	this->instrHolder.resize(this->instrHolder.size() + size);
+	return &this->instrHolder[this->instrHolder.size() - size];
+}
+RuntimeInstr* RuntimeCtx::GetInstr(REG idx) {
+	return &this->instrHolder[idx];
 }

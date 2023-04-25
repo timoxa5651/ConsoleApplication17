@@ -25,7 +25,6 @@ enum class ERuntimeCallType {
 	Invalid,
 
 	Assign, // not called
-	TypeConvert,
 
 	Add,
 	Sub,
@@ -40,7 +39,6 @@ enum class ERuntimeCallType {
 inline std::string ERuntimeCallType_ToString(ERuntimeCallType c) {
 	switch (c) {
 	case ERuntimeCallType::Assign: return "Assign";
-	case ERuntimeCallType::TypeConvert: return "TypeConvert";
 	case ERuntimeCallType::Add: return "Add";
 	case ERuntimeCallType::Sub: return "Sub";
 	case ERuntimeCallType::Mult: return "Mult";
@@ -102,11 +100,15 @@ private:
 	uint32_t size;
 
 	std::function<void(RuntimeVar*, void*)> nativeCtor;
+	std::function<bool(RuntimeVar*, RuntimeType*)> nativeTypeConvert;
 	std::array<void*, static_cast<int>(ERuntimeCallType::MAX)> vtable;
 
 public:
 	void SetNativeCtor(decltype(RuntimeType::nativeCtor) func) {
 		this->nativeCtor = func;
+	}
+	void SetNativeTypeConvert(decltype(RuntimeType::nativeTypeConvert) func) {
+		this->nativeTypeConvert = func;
 	}
 
 	template<typename T>
@@ -123,6 +125,9 @@ public:
 	std::string GetName() {
 		return this->name;
 	}
+	ERuntimeType GetTypeEnum() {
+		return this->type;
+	}
 
 	RuntimeType(std::string name, ERuntimeType type, uint32_t size) : size(size), name(name), id(std::hash<std::string>{}(name)), type(type) {
 		this->nativeCtor = nullptr;
@@ -133,7 +138,23 @@ public:
 class RuntimeVar {
 public:
 	RuntimeType* heldType;
-	uint8_t* dataBlob;
+	union {
+		int64_t i64;
+		double dbl;
+		struct {
+			uint32_t size;
+			char* ptr;
+		} str;
+		struct {
+			uint32_t size;
+			uint32_t cap;
+			RuntimeVar** data;
+		} arr;
+
+		struct {
+			void* dataBlob;
+		} custom;
+	} data;
 };
 
 using RuntimeMethodPtr = RuntimeVar*(*)(RuntimeCtx*, const std::vector<RuntimeVar*>&);
@@ -152,7 +173,15 @@ public:
 	std::string GetName() {
 		return this->name;
 	}
+	REG GetVA() {
+		return this->va;
+	}
+
 	bool IsNative() { return this->native != nullptr; }
+	RuntimeVar* NativeCall(RuntimeCtx* ctx, const RuntimeParamPack& params) {
+		return this->native(ctx, params.vars);
+	}
+
 private:
 	std::string name;
 	int params;
@@ -214,18 +243,32 @@ struct RuntimeInstr {
 	std::string GetParamString(RuntimeCtx* ctx, size_t idx) const;
 
 	RuntimeInstr(RuntimeInstrType op) : opcode(op) {}
+	RuntimeInstr() : RuntimeInstr(RuntimeInstrType::Invalid) {}
 private:
 	std::vector<std::any> params;
 };
 
+struct LocalVarState {
+	RuntimeVar* var;
+	bool dirty;
+};
 class RuntimeExecutor {
 private:
 	REG ip;
+	bool isErrored;
 	std::stack<REG> stack;
+	std::unordered_map<std::string, LocalVarState> locals;
 
-	RuntimeVar* ExecuteInstr(RuntimeCtx* ctx);
+	const LocalVarState& GetLocal(std::string name);
+
+	RuntimeVar* ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr);
 public:
-	RuntimeExecutor() : ip(INVALID_REG_VALUE) {};
+	RuntimeExecutor() : ip(INVALID_REG_VALUE), isErrored(false) {};
+	void Reset() {
+		this->isErrored = false;
+		while(!this->stack.empty()) this->stack.pop();
+		this->stack.push(INVALID_REG_VALUE);
+	}
 
 	RuntimeVar* CallMethod(RuntimeCtx* ctx, RuntimeMethod* method, const RuntimeParamPack& params);
 };
@@ -244,10 +287,11 @@ public:
 	RuntimeMethod* GetMethod(std::string methodName) {
 		return this->GetMethod(Hash{}(methodName));
 	}
-	RuntimeType* GetType(TID methodName);
+	RuntimeType* GetType(TID typeName);
+	//RuntimeType* GetType(ERuntimeType typeEnum); maybe pregen?
 
 	RuntimeInstr* GetInstr(REG idx);
-	REG AllocateFunction(size_t size);
+	RuntimeInstr* AllocateFunction(size_t size);
 
 	int64_t ExecuteRoot(std::string functionName);
 private:
