@@ -107,7 +107,7 @@ private:
 	std::array<void*, static_cast<int>(ERuntimeCallType::MAX)> vtable;
 
 	bool NativeTypeConvert(RuntimeVar* var, RuntimeType* desType){
-		return this->nativeTypeConvert(var, desType);
+         return this->nativeTypeConvert(var, desType);
 	}
 	void NativeCtor(RuntimeVar* var, const std::vector<uint8_t>& rawData){
 		return this->nativeCtor(var, rawData);
@@ -139,8 +139,9 @@ public:
 		return this->type;
 	}
 
-	RuntimeType(std::string name, ERuntimeType type, uint32_t size) : size(size), name(name), id(std::hash<std::string>{}(name)), type(type) {
+	RuntimeType(const std::string& name_, ERuntimeType type_, uint32_t size_) : size(size), name(name_), id(std::hash<std::string>{}(name)), type(type_) {
 		this->nativeCtor = nullptr;
+        this->nativeTypeConvert = nullptr;
 		vtable.fill(0);
 	}
 };
@@ -207,7 +208,11 @@ public:
 	} data;
 
 	bool NativeTypeConvert(RuntimeType* desType){
-		return this->heldType->NativeTypeConvert(this, desType);
+        if(this->heldType->NativeTypeConvert(this, desType)){
+            this->heldType = desType;
+            return true;
+        }
+        return false;
 	}
 	void NativeCtor(const std::vector<uint8_t>& rawData){
 		return this->heldType->NativeCtor(this, rawData);
@@ -349,16 +354,18 @@ struct VarPool {
 	std::list<T*> lst;
 	
 	VarPool() : block(nullptr), size(0) {}
-	VarPool(int length){
+	VarPool(RuntimeCtx* ctx, int length){
 		this->block = new T[length];
 		this->size = length;
 		for(int i = 0; i < length; ++i){
-			this->lst.push_back(this->block + i);
+            RuntimeVar* var = this->block + i;
+            var->heldType = ctx->GetType(ERuntimeType::Null);
+			this->lst.push_back(var);
 		}
 	}
 	RuntimeVar* Pop(){
 		RuntimeVar* var = this->lst.front();
-		this->lst.pop_back();
+		this->lst.pop_front();
 		return var;
 	}
 	bool Return(RuntimeCtx* ctx, RuntimeVar* var) {
@@ -383,9 +390,9 @@ private:
 
 	std::map<RuntimeVar*, VarPool<RuntimeVar>> varPool;
 
-	RuntimeVar* CreateVar();
+	RuntimeVar* CreateVar(RuntimeCtx* ctx);
 
-	const LocalVarState& GetLocal(std::string name);
+	const LocalVarState& GetLocal(RuntimeCtx* ctx, std::string name);
 
 	RuntimeVar* ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr);
 public:

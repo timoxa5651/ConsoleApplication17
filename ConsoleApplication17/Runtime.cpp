@@ -22,15 +22,15 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 		instr.AddParam(retName);
 
 		if (entry.cmd == PolizCmd::Str) {
-			instr.AddParam(Hash{}("String"));
+			instr.AddParam<TID>(Hash{}("String"));
 			instr.AddParam(entry.operand);
 		}
 		else if (entry.cmd == PolizCmd::ConstInt) {
-			instr.AddParam(Hash{}("Int64"));
+			instr.AddParam<TID>(Hash{}("Int64"));
 			instr.AddParam(std::stoll(entry.operand.c_str()));
 		}
 		else if (entry.cmd == PolizCmd::Null) {
-			instr.AddParam(Hash{}("Null"));
+			instr.AddParam<TID>(Hash{}("Null"));
 		}
 		else {
 			assert(false);
@@ -202,11 +202,11 @@ std::string RuntimeInstr::GetParamString(RuntimeCtx* ctx, size_t idx) const {
 		return std::any_cast<std::string>(value);
 	if (value.type() == typeid(int64_t))
 		return std::to_string(std::any_cast<int64_t>(value));
-	if (value.type() == typeid(HashType)) {
+	if (value.type() == typeid(TID)) {
 		if (ctx) {
-			return ctx->GetType(std::any_cast<HashType>(value))->GetName();
+			return ctx->GetType(std::any_cast<TID>(value))->GetName();
 		}
-		return std::to_string(std::any_cast<HashType>(value));
+		return std::to_string(std::any_cast<TID>(value));
 	}
 	if (value.type() == typeid(ERuntimeCallType))
 		return ERuntimeCallType_ToString(std::any_cast<ERuntimeCallType>(value));
@@ -214,21 +214,21 @@ std::string RuntimeInstr::GetParamString(RuntimeCtx* ctx, size_t idx) const {
 	assert(false);
 }
 
-RuntimeVar* RuntimeExecutor::CreateVar(){
+RuntimeVar* RuntimeExecutor::CreateVar(RuntimeCtx* ctx){
 	for(auto& [begin, pool] : this->varPool){
 		RuntimeVar* var = pool.Pop();
 		if(var) return var;
 	}
 	// create pool
-	auto pool = VarPool<RuntimeVar>(1000);
+	auto pool = VarPool<RuntimeVar>(ctx, 1000);
 	this->varPool[pool.block] = pool;
 	return pool.Pop();
 }
-const LocalVarState& RuntimeExecutor::GetLocal(std::string name) {
+const LocalVarState& RuntimeExecutor::GetLocal(RuntimeCtx* ctx, std::string name) {
 	auto it = this->locals.find(name);
 	if(it == this->locals.end()){
 		LocalVarState state;
-		state.var = this->CreateVar();
+		state.var = this->CreateVar(ctx);
 		
 		this->locals[name] = state;
 		return state;
@@ -241,7 +241,7 @@ RuntimeVar* RuntimeExecutor::ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr) 
 
 	if(instr->opcode == RuntimeInstrType::Ctor){
 		auto& bret = instr->GetParam<std::string>(0);
-		const auto& local = this->GetLocal(bret);
+		LocalVarState local = this->GetLocal(ctx, bret);
 		if(local.var->heldType->GetTypeEnum() != ERuntimeType::Null)
 			local.var->NativeTypeConvert(ctx->GetType(ERuntimeType::Null)); // reset var so we don't convert
 		TID targetType = instr->GetParam<TID>(1);
@@ -265,6 +265,8 @@ RuntimeVar* RuntimeExecutor::CallMethod(RuntimeCtx* ctx, RuntimeMethod* method, 
 	// scripted
 	while (!this->isErrored) {
 		RuntimeInstr* instr = ctx->GetInstr(this->ip);
+        this->ip += 1;
+
 		RuntimeVar* var = this->ExecuteInstr(ctx, instr);
 		if (instr->opcode == RuntimeInstrType::Ret) {
 			// handle Ret
@@ -345,7 +347,7 @@ int64_t RuntimeCtx::ExecuteRoot(std::string functionName) {
 		return 1;
 	}
 	if (ret->heldType->GetTypeEnum() != ERuntimeType::Int64) {
-		// cast...how
+		ret->NativeTypeConvert(this->GetType(ERuntimeType::Int64));
 	}
 	return ret->data.i64;
 }

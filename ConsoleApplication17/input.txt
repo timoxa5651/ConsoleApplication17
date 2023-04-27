@@ -3,5 +3,6 @@ function f(a, b){
 }
 
 function main(){
-    print(10 + 2);
+
+    return 123;
 }

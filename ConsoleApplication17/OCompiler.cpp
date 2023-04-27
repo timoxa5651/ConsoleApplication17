@@ -200,7 +200,9 @@ CompilationResult* Compiler::Compile(string inputFile) {
 	this->runtime = new RuntimeCtx();
 	this->runtime->AddPoliz(this->parser, &this->parser->poliz);
 
-	this->runtime->ExecuteRoot("main");
+	int64_t ret = this->runtime->ExecuteRoot("main");
+    printf("Main returned bad exit code.. %d\n", ret);
+
 
 	return result;
 }
