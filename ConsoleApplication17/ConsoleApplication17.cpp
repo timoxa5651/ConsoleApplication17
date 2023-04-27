@@ -29,12 +29,13 @@ using std::exception;
 int main()
 {
 	Compiler compiler = Compiler();
-	CompilationResult* result = compiler.Compile("../input.txt");
+	CompilationResult* result = compiler.Compile("input.txt");
 //	if (result->GetString().find("Failed to read")) {
 //		delete result;
 //		result = compiler.Compile("input.txt");
 //	}
-	cout << result->GetString() << endl;
+	if(!result->IsOk())
+		cout << result->GetString() << endl;
 	delete result;
 
 //    Poliz c, d;

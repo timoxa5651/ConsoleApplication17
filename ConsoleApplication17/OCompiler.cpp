@@ -197,11 +197,16 @@ CompilationResult* Compiler::Compile(string inputFile) {
 	this->parser->poliz.addFunction("main", this->parser->poliz);
 	this->parser->poliz.PrintFuncRegistry();
 
+	std::cout << result->GetString() << std::endl;
+
 	this->runtime = new RuntimeCtx();
 	this->runtime->AddPoliz(this->parser, &this->parser->poliz);
 
 	int64_t ret = this->runtime->ExecuteRoot("main");
-    printf("Main returned bad exit code.. %d\n", ret);
+	printf("Main returned %lld\n", ret);
+	if (ret != 0) {
+		printf("[Script] Execution failed: %s\n", this->runtime->GetErrorString().c_str());
+	}
 
 
 	return result;

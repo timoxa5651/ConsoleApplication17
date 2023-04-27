@@ -28,6 +28,7 @@ class CompilationResult {
 	// string outputFile;
 
 public:
+	bool IsOk() { return this->wasOk; }
 	string GetString();
 	void SetException(const CompileException& ex);
 	CompilationResult();

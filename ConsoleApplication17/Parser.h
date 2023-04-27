@@ -30,6 +30,7 @@ public:
 struct DeclaredFunction {
 	string name;
 	int numArgs;
+	std::vector<string> argNames;
 
 	bool operator==(const DeclaredFunction& ex) const {
 		return ex.name == this->name && (ex.numArgs < 0 || this->numArgs < 0 || this->numArgs == ex.numArgs);
@@ -78,7 +79,7 @@ private:
 	Poliz Program();
     Poliz Function();
 
-	std::set<string> FunctionArgumentsDeclaration();
+	std::vector<string> FunctionArgumentsDeclaration();
 
     Poliz Block();
     Poliz Statement();

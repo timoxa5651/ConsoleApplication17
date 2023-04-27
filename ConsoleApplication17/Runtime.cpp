@@ -37,7 +37,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 		}
 		cmd.push_back(instr);
 		return retName;
-	};	
+	};
 
 	std::vector<int64_t> addrMap(poliz.size());
 	for (int64_t i = 0; i < poliz.size(); ++i) {
@@ -67,6 +67,23 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 
 			oper.AddParam(CreateScriptingInst(oper, pr1));
 			oper.AddParam(CreateScriptingInst(oper, pr2));
+
+			stack.push(PolizEntry{ -1, PolizCmd::Var, retName });
+			cmd.push_back(oper);
+			break;
+		}
+		case PolizCmd::UnOperation: {
+			PolizEntry pr1 = stack.top();
+			stack.pop();
+
+			ERuntimeCallType operType = ERuntimeCallType_FromString(entry.operand, true);
+			RuntimeInstr oper(RuntimeInstrType::UnOperation);
+
+			std::string retName = "$ret" + std::to_string(retCnt++);;
+			oper.AddParam(retName);
+			oper.AddParam(operType);
+
+			oper.AddParam(CreateScriptingInst(oper, pr1));
 
 			stack.push(PolizEntry{ -1, PolizCmd::Var, retName });
 			cmd.push_back(oper);
@@ -147,7 +164,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 			cmd.push_back(ret);
 			break;
 		}
-		
+
 		default: {
 			stack.push(entry);
 			break;
@@ -187,12 +204,12 @@ std::vector<uint8_t> RuntimeInstr::GetRawParam(size_t idx) const {
 		bf_write.Write(std::any_cast<std::string>(value));
 	if (value.type() == typeid(int64_t))
 		bf_write.Write(std::any_cast<int64_t>(value));
-	if (value.type() == typeid(HashType)) 
+	if (value.type() == typeid(HashType))
 		bf_write.Write(std::any_cast<HashType>(value));
 	if (value.type() == typeid(ERuntimeCallType))
 		bf_write.Write(std::any_cast<ERuntimeCallType>(value));
-	
-	
+
+
 
 	return bf_write.GetBuffer();
 }
@@ -214,73 +231,337 @@ std::string RuntimeInstr::GetParamString(RuntimeCtx* ctx, size_t idx) const {
 	assert(false);
 }
 
-RuntimeVar* RuntimeExecutor::CreateVar(RuntimeCtx* ctx){
-	for(auto& [begin, pool] : this->varPool){
+RuntimeVar* RuntimeExecutor::CreateVar(RuntimeCtx* ctx) {
+	for (auto& [begin, pool] : this->varPool) {
 		RuntimeVar* var = pool.Pop();
-		if(var) return var;
+		if (var) return var;
 	}
 	// create pool
+	printf("[dbg] Allocating VarPool: %d\n", 1000);
 	auto pool = VarPool<RuntimeVar>(ctx, 1000);
 	this->varPool[pool.block] = pool;
-	return pool.Pop();
+	return this->CreateVar(ctx);
 }
-const LocalVarState& RuntimeExecutor::GetLocal(RuntimeCtx* ctx, std::string name) {
+RuntimeVar* RuntimeExecutor::CreateTypedVar(RuntimeCtx* ctx, RuntimeType* type) {
+	RuntimeVar* var = this->CreateVar(ctx);
+	if (!var->NativeTypeConvert(type))
+		assert(false);
+	return var;
+}
+
+void RuntimeExecutor::ReturnVar(RuntimeCtx* ctx, RuntimeVar* var) {
+	auto ownerPool = this->varPool.lower_bound(var);
+	if (ownerPool == this->varPool.end() || ownerPool->first != var)
+		--ownerPool;
+	if (!ownerPool->second.Return(ctx, var)) {
+		printf("ReturnVar: Pool errored\n");
+	}
+}
+
+void LocalScope::Destroy(RuntimeExecutor* exec, RuntimeCtx* ctx) {
+	for (auto& [n, state] : this->locals) {
+		exec->ReturnVar(ctx, state.var);
+	}
+	this->locals.clear();
+	this->parentLocals.clear();
+}
+LocalVarState LocalScope::GetLocal(RuntimeExecutor* exec, RuntimeCtx* ctx, const std::string name) {
 	auto it = this->locals.find(name);
-	if(it == this->locals.end()){
-		LocalVarState state;
-		state.var = this->CreateVar(ctx);
-		
+	if (it == this->locals.end()) {
+		auto it2 = this->parentLocals.find(name);
+		if (it2 != this->parentLocals.end()) {
+			return it2->second;
+		}
+		LocalVarState state{};
+		state.var = exec->CreateVar(ctx);
 		this->locals[name] = state;
 		return state;
 	}
 	return it->second;
 }
+void LocalScope::SetLocal(RuntimeExecutor* exec, RuntimeCtx* ctx, const std::string& varName, RuntimeVar* next, bool isParent) {
+	if (isParent) {
+		auto it = this->parentLocals.find(varName);
+		if (it == this->parentLocals.end()) {
+			LocalVarState state{};
+			state.var = next;
+			this->parentLocals[varName] = state;
+		}
+		else {
+			assert(false); // ??
+		}
+		return;
+	}
+
+	auto it = this->locals.find(varName);
+	if (it == this->locals.end()) {
+		assert(false); // ??
+		return;
+	}
+	LocalVarState& state = it->second;
+	exec->ReturnVar(ctx, state.var);
+	state.var = next;
+}
+
+LocalVarState RuntimeExecutor::GetLocal(RuntimeCtx* ctx, const std::string& name) {
+	return this->currentScope->GetLocal(this, ctx, name);
+}
+void RuntimeExecutor::SetLocal(RuntimeCtx* ctx, const std::string& varName, RuntimeVar* next) {
+	return this->currentScope->SetLocal(this, ctx, varName, next, false);
+}
 
 RuntimeVar* RuntimeExecutor::ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr) {
-	printf("Executing instruction %d\n", instr->opcode);
+	//printf("Executing instruction %s\n", RuntimeInstrType_ToString(instr->opcode).c_str());
 
-	if(instr->opcode == RuntimeInstrType::Ctor){
+	if (instr->opcode == RuntimeInstrType::Ctor) {
 		auto& bret = instr->GetParam<std::string>(0);
 		LocalVarState local = this->GetLocal(ctx, bret);
-		if(local.var->heldType->GetTypeEnum() != ERuntimeType::Null)
+		if (local.var->GetType()->GetTypeEnum() != ERuntimeType::Null)
 			local.var->NativeTypeConvert(ctx->GetType(ERuntimeType::Null)); // reset var so we don't convert
 		TID targetType = instr->GetParam<TID>(1);
 		local.var->NativeTypeConvert(ctx->GetType(targetType));
 
 		ByteStream writer;
-		for(size_t i = 2; i < 2 + instr->GetParamCount(); ++i){
+		for (size_t i = 2; i < instr->GetParamCount(); ++i) {
 			writer.Write(instr->GetRawParam(i));
 		}
-		local.var->NativeCtor(writer.GetBuffer());
+ 		local.var->NativeCtor(writer.GetBuffer());
 	}
+	else if (instr->opcode == RuntimeInstrType::UnOperation) {
+		auto& bret = instr->GetParam<std::string>(0);
+		LocalVarState ret = this->GetLocal(ctx, bret);
+		ERuntimeCallType callType = instr->GetParam<ERuntimeCallType>(1);
+
+		const string& bp1 = instr->GetParam<std::string>(2);
+		LocalVarState p1 = this->GetLocal(ctx, bp1);
+
+		if (callType == ERuntimeCallType::UnNot) {
+			RuntimeVar* newRet = this->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Int64));
+			newRet->data.i64 = !p1.var->IsFalse();
+			this->SetLocal(ctx, bret, newRet);
+		}
+		else {
+			RuntimeVar* newRet = p1.var->CallOperator(callType, ctx, this, nullptr);
+			if (newRet) this->SetLocal(ctx, bret, newRet);
+		}
+	}
+	else if (instr->opcode == RuntimeInstrType::Operation) {
+		auto& bret = instr->GetParam<std::string>(0);
+		LocalVarState ret = this->GetLocal(ctx, bret);
+		ERuntimeCallType callType = instr->GetParam<ERuntimeCallType>(1);
+
+		const string& btrg = instr->GetParam<std::string>(3);
+		LocalVarState target = this->GetLocal(ctx, btrg); // 2nd operand
+		if (callType == ERuntimeCallType::Assign) {
+			if (ret.var->GetType()->GetTypeEnum() != ERuntimeType::Null)
+				ret.var->NativeTypeConvert(ctx->GetType(ERuntimeType::Null));
+			ret.var->CopyFrom(target.var);
+		}
+		else {
+			const string& bp1 = instr->GetParam<std::string>(2);
+			LocalVarState p1 = this->GetLocal(ctx, bp1);
+			const string& bp2 = instr->GetParam<std::string>(3);
+			LocalVarState p2 = this->GetLocal(ctx, bp2);
+
+			if (callType == ERuntimeCallType::CompareNotEq) {
+				RuntimeVar* newRet = p1.var->CallOperator(ERuntimeCallType::CompareEq, ctx, this, p2.var);
+				if (newRet) {
+					newRet->data.i64 = !newRet->data.i64;
+					this->SetLocal(ctx, bret, newRet);
+				}
+				else {
+					this->SetError("Illegal operation: " + p1.var->GetType()->GetName() + " != " + p2.var->GetType()->GetName());
+				}
+			}
+			else if (callType == ERuntimeCallType::CompareLessEq) {
+				bool fail = true;
+				RuntimeVar* newRet = p1.var->CallOperator(ERuntimeCallType::CompareEq, ctx, this, p2.var);
+				if (newRet) {
+					if (newRet->data.i64) {
+						this->SetLocal(ctx, bret, newRet);
+						fail = false;
+					}
+					else {
+						this->ReturnVar(ctx, newRet);
+						RuntimeVar* newRet = p1.var->CallOperator(ERuntimeCallType::CompareLess, ctx, this, p2.var);
+						if (newRet) {
+							this->SetLocal(ctx, bret, newRet);
+							fail = false;
+						}
+					}
+				}
+				if (fail) {
+					this->SetError("Illegal operation: " + p1.var->GetType()->GetName() + " <= " + p2.var->GetType()->GetName());
+				}
+			}
+			else if (callType == ERuntimeCallType::CompareGreater) {
+				bool fail = true;
+				RuntimeVar* newRet = p1.var->CallOperator(ERuntimeCallType::CompareEq, ctx, this, p2.var);
+				if (newRet) {
+					if (newRet->data.i64) {
+						newRet->data.i64 = 0;
+						this->SetLocal(ctx, bret, newRet);
+						fail = false;
+					}
+					else {
+						this->ReturnVar(ctx, newRet);
+						RuntimeVar* newRet = p1.var->CallOperator(ERuntimeCallType::CompareLess, ctx, this, p2.var);
+						if (newRet) {
+							newRet->data.i64 = !newRet->data.i64;
+							this->SetLocal(ctx, bret, newRet);
+							fail = false;
+						}
+					}
+				}
+				if (fail) {
+					this->SetError("Illegal operation: " + p1.var->GetType()->GetName() + " > " + p2.var->GetType()->GetName());
+				}
+			}
+			else if (callType == ERuntimeCallType::CompareGreaterEq) {
+				bool fail = true;
+				RuntimeVar* newRet = p1.var->CallOperator(ERuntimeCallType::CompareEq, ctx, this, p2.var);
+				if (newRet) {
+					if (newRet->data.i64) {
+						this->SetLocal(ctx, bret, newRet);
+						fail = false;
+					}
+					else {
+						this->ReturnVar(ctx, newRet);
+						RuntimeVar* newRet = p1.var->CallOperator(ERuntimeCallType::CompareLess, ctx, this, p2.var);
+						if (newRet) {
+							newRet->data.i64 = !newRet->data.i64;
+							this->SetLocal(ctx, bret, newRet);
+							fail = false;
+						}
+					}
+				}
+				if (fail) {
+					this->SetError("Illegal operation: " + p1.var->GetType()->GetName() + " >= " + p2.var->GetType()->GetName());
+				}
+			}
+			else {
+				RuntimeVar* newRet = p1.var->CallOperator(callType, ctx, this, p2.var);
+				if (newRet) this->SetLocal(ctx, bret, newRet);
+			}
+		}
+	}
+	else if (instr->opcode == RuntimeInstrType::Call) {
+		auto& bret = instr->GetParam<std::string>(0);
+		LocalVarState local = this->GetLocal(ctx, bret);
+
+		auto& methodName = instr->GetParam<std::string>(1);
+		RuntimeParamPack params;
+		for (size_t i = 2; i < instr->GetParamCount(); ++i) {
+			params.vars.push_back(this->GetLocal(ctx, instr->GetParam<std::string>(i)).var);
+		}
+
+		REG nextIp = this->ip;
+
+		RuntimeVar* ret = this->CallMethod(ctx, ctx->GetMethod(methodName), params);
+
+		//if (local.var->heldType->GetTypeEnum() != ERuntimeType::Null) local.var->NativeTypeConvert(ctx->GetType(ERuntimeType::Null)); // destroy existing
+		this->SetLocal(ctx, bret, ret);
+
+		this->ip = nextIp;
+	}
+	else if (instr->opcode == RuntimeInstrType::Array) {
+
+	}
+	else if (instr->opcode == RuntimeInstrType::Jz) {
+		auto& bcond = instr->GetParam<std::string>(1);
+		LocalVarState state = this->GetLocal(ctx, bcond);
+		
+		if (state.var->IsFalse()) {
+			this->ip += instr->GetParam<int64_t>(0);
+		}
+	}
+	else if (instr->opcode == RuntimeInstrType::Jge) {
+		/*auto& bcond = instr->GetParam<std::string>(1);
+		LocalVarState state = this->GetLocal(ctx, bcond);
+		bool fail = true;
+		RuntimeVar* newRet = p1.var->CallOperator(ERuntimeCallType::CompareEq, ctx, this, p2.var);
+		if (newRet) {
+			if (newRet->data.i64) {
+				this->SetLocal(ctx, bret, newRet);
+				fail = false;
+			}
+			else {
+				this->ReturnVar(ctx, newRet);
+				RuntimeVar* newRet = p1.var->CallOperator(ERuntimeCallType::CompareLess, ctx, this, p2.var);
+				if (newRet) {
+					newRet->data.i64 = !newRet->data.i64;
+					this->SetLocal(ctx, bret, newRet);
+					fail = false;
+				}
+			}
+		}
+		if (fail) {
+			this->SetError("Illegal operation: " + p1.var->GetType()->GetName() + " >= " + p2.var->GetType()->GetName());
+		}*/
+	}
+	else if (instr->opcode == RuntimeInstrType::Jmp) {
+		this->ip += instr->GetParam<int64_t>(0);
+	}
+	else if (instr->opcode == RuntimeInstrType::Ret) {
+		auto& bret = instr->GetParam<std::string>(0);
+		LocalVarState state = this->GetLocal(ctx, bret);
+		return state.var;
+	}
+
 	return nullptr;
 }
 
 RuntimeVar* RuntimeExecutor::CallMethod(RuntimeCtx* ctx, RuntimeMethod* method, const RuntimeParamPack& params) {
 	if (method->IsNative()) {
-		return method->NativeCall(ctx, params);
+		return method->NativeCall(ctx, this, params); // can be unnamed, later moved to scope in Ret
 	}
-	this->ip = method->GetVA();
 
+	LocalScope* oldScope = this->currentScope;
+	this->currentScope = new LocalScope();
+	// push params
+	auto& names = method->GetParamNames();
+	for (size_t i = 0; i < method->GetParamCount(); ++i) {
+		auto state = this->GetLocal(ctx, names[i]);
+		state.var->CopyFrom(params.vars[i]);
+		//this->currentScope->SetLocal(this, ctx, names[i], state.var, true); -- pass as reference
+	}
+
+	this->ip = method->GetVA();
 	// scripted
+	RuntimeVar* returnVar = nullptr;
 	while (!this->isErrored) {
 		RuntimeInstr* instr = ctx->GetInstr(this->ip);
-        this->ip += 1;
+		this->ip += 1;
 
 		RuntimeVar* var = this->ExecuteInstr(ctx, instr);
 		if (instr->opcode == RuntimeInstrType::Ret) {
 			// handle Ret
-			return var;
+			returnVar = var;
+			break;
 		}
 	}
-	return nullptr;
-}
+	if (returnVar) {
+		RuntimeVar* retCopy = this->CreateVar(ctx);
+		retCopy->CopyFrom(returnVar);
+		returnVar = retCopy;
+	}
 
+	if (oldScope) {
+		this->currentScope->Destroy(this, ctx);
+		delete this->currentScope;
+		this->currentScope = oldScope;
+	} // don't destroy last scope so we can see main return value
+	return returnVar;
+}
+void RuntimeExecutor::SetError(std::string errorMessage) {
+	this->isErrored = true;
+	this->errorMessage = errorMessage;
+}
 
 RuntimeCtx::RuntimeCtx() {
 	this->executor = new RuntimeExecutor();
 	Precompile::CreateTypes(this);
-	
+
 	// set default
 	this->defaultTypes[(int)ERuntimeType::Int64] = this->GetType(Hash{}("Int64"));
 	this->defaultTypes[(int)ERuntimeType::String] = this->GetType(Hash{}("String"));
@@ -308,7 +589,7 @@ RuntimeType* RuntimeCtx::GetType(TID typeName) {
 		return nullptr;
 	return it->second;
 }
-RuntimeType* RuntimeCtx::GetType(ERuntimeType typeEnum){
+RuntimeType* RuntimeCtx::GetType(ERuntimeType typeEnum) {
 	return this->defaultTypes[static_cast<int>(typeEnum)];
 }
 
@@ -323,7 +604,7 @@ void RuntimeCtx::AddPoliz(Parser* parser, Poliz* root) {
 		if (this->GetMethod(func.name)) {
 			continue; // don't override
 		}
-		RuntimeMethod* method = new RuntimeMethod(func.name, func.numArgs);
+		RuntimeMethod* method = new RuntimeMethod(func.name, func.argNames);
 		this->regMethods[Hash{}(func.name)] = method;
 	}
 
@@ -346,10 +627,16 @@ int64_t RuntimeCtx::ExecuteRoot(std::string functionName) {
 	if (!ret) {
 		return 1;
 	}
-	if (ret->heldType->GetTypeEnum() != ERuntimeType::Int64) {
-		ret->NativeTypeConvert(this->GetType(ERuntimeType::Int64));
+	if (ret->GetType()->GetTypeEnum() != ERuntimeType::Int64) {
+		if (!ret->NativeTypeConvert(this->GetType(ERuntimeType::Int64))) {
+			this->executor->SetError("Main should return Int64");
+			return 1;
+		}
 	}
 	return ret->data.i64;
+}
+std::string RuntimeCtx::GetErrorString() {
+	return this->executor->GetError(); 
 }
 
 void RuntimeCtx::AddType(RuntimeType* type) {

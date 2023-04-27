@@ -231,10 +231,11 @@ Poliz Parser::Function() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "there is no opening bracket in function declaration");
 	}
 	ReadLexeme();
-	std::set<string> args;
+	std::vector<string> args;
 	if (curLexeme_.string != ")") {
 		args = FunctionArgumentsDeclaration();
 		func.numArgs = args.size();
+		func.argNames = args;
 		ReadLexeme();
 	}
 	if (curLexeme_.string != ")") {
@@ -255,19 +256,22 @@ Poliz Parser::Function() {
     return res;
 }
 
-std::set<string> Parser::FunctionArgumentsDeclaration() {
-	std::set<string> args;
+std::vector<string> Parser::FunctionArgumentsDeclaration() {
+	std::vector<string> args;
+	std::set<string> argsSet;
 	this->isInAssign = true;
 	Name();
-	args.insert(curLexeme_.string);
+	argsSet.insert(curLexeme_.string);
+	args.push_back(curLexeme_.string);
 	this->isInAssign = false;
 	ReadLexeme();
 	while (curLexeme_.string == ",") {
 		ReadLexeme();
 		this->isInAssign = true;
 		Name();
-		if(!args.insert(curLexeme_.string).second)
+		if(!argsSet.insert(curLexeme_.string).second)
 			throw ParserException(curLexeme_, this->currentLexemeIdx, "Argument declared twice");
+		args.push_back(curLexeme_.string);
 		this->isInAssign = false;
 		ReadLexeme();
 	}
@@ -516,7 +520,7 @@ Poliz Parser::String() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid string literal");
 	}
     Poliz res;
-    res.addEntry(PolizCmd::Str, "\"" + curLexeme_.string + "\"");
+    res.addEntry(PolizCmd::Str, curLexeme_.string);
     return res;
 }
 

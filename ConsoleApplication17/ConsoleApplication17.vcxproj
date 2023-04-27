@@ -134,6 +134,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ASMJIT_NO_AARCH64;ASMJIT_NO_FOREIGN;ASMJIT_STATIC;ASMJIT_STATIC;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
