@@ -9,6 +9,7 @@
 #include <stack>
 #include <any>
 #include <cassert>
+#include <list>
 
 #include "Poliz.h"
 
@@ -17,8 +18,8 @@ class Parser;
 
 using TID = uint64_t;
 using REG = uint64_t;
-using HashType = uint64_t;
 using Hash = std::hash<std::string>;
+using HashType = decltype(Hash{}(""));
 #define INVALID_REG_VALUE ((uint64_t)-1)
 
 enum class ERuntimeCallType {
@@ -86,22 +87,31 @@ enum class ERuntimeType {
 	String,
 	Array,
 
-	Custom
+	Custom,
+	DEFAULT_MAX = Custom,
 };
 
 struct RuntimeParamPack {
 	std::vector<RuntimeVar*> vars;
 };
 class RuntimeType {
+	friend class RuntimeVar;
 private:
 	std::string name;
 	TID id;
 	ERuntimeType type;
 	uint32_t size;
 
-	std::function<void(RuntimeVar*, void*)> nativeCtor;
+	std::function<void(RuntimeVar*, const std::vector<uint8_t>&)> nativeCtor;
 	std::function<bool(RuntimeVar*, RuntimeType*)> nativeTypeConvert;
 	std::array<void*, static_cast<int>(ERuntimeCallType::MAX)> vtable;
+
+	bool NativeTypeConvert(RuntimeVar* var, RuntimeType* desType){
+		return this->nativeTypeConvert(var, desType);
+	}
+	void NativeCtor(RuntimeVar* var, const std::vector<uint8_t>& rawData){
+		return this->nativeCtor(var, rawData);
+	}
 
 public:
 	void SetNativeCtor(decltype(RuntimeType::nativeCtor) func) {
@@ -135,6 +145,46 @@ public:
 	}
 };
 
+struct ByteStream {
+private:
+	std::vector<uint8_t> bf_write;
+	uint32_t offset;
+
+	inline void Write(const void* data, size_t dt){
+		bf_write.insert(bf_write.begin(), static_cast<const uint8_t*>(data), static_cast<const uint8_t*>(data) + dt);
+	}
+
+	inline void Read(void* data, size_t dt){
+		std::copy(bf_write.data() + this->offset, bf_write.data() + this->offset + dt, (uint8_t*)data);
+		this->offset += dt;
+	}
+
+public:
+	ByteStream() : offset(0) {}
+	ByteStream(const std::vector<uint8_t>& st) : offset(0), bf_write(st) {}
+
+	const std::vector<uint8_t>& GetBuffer() { return this->bf_write; }
+
+	inline void Write(std::string val){
+		size_t sz = val.size();
+		this->Write(&sz, sizeof(sz));
+		this->Write(val.data(), sz);
+	}
+	inline void Write(const std::vector<uint8_t>& val)  {
+		bf_write.insert(bf_write.begin(), val.begin(), val.end());
+	}
+
+	template<typename T>
+	inline void Write(const T& val) requires std::is_trivially_copyable_v<T>  {
+		this->Write(&val, sizeof(val));
+	}
+
+	template<typename T>
+	inline void Read(T& val) requires std::is_trivially_copyable_v<T>  {
+		this->Read(&val, sizeof(val));
+	}
+};
+
 class RuntimeVar {
 public:
 	RuntimeType* heldType;
@@ -155,6 +205,13 @@ public:
 			void* dataBlob;
 		} custom;
 	} data;
+
+	bool NativeTypeConvert(RuntimeType* desType){
+		return this->heldType->NativeTypeConvert(this, desType);
+	}
+	void NativeCtor(const std::vector<uint8_t>& rawData){
+		return this->heldType->NativeCtor(this, rawData);
+	}
 };
 
 using RuntimeMethodPtr = RuntimeVar*(*)(RuntimeCtx*, const std::vector<RuntimeVar*>&);
@@ -175,6 +232,9 @@ public:
 	}
 	REG GetVA() {
 		return this->va;
+	}
+	void SetVA(REG va) {
+		this->va = va;
 	}
 
 	bool IsNative() { return this->native != nullptr; }
@@ -241,36 +301,12 @@ struct RuntimeInstr {
 	}
 
 	std::string GetParamString(RuntimeCtx* ctx, size_t idx) const;
+	std::vector<uint8_t> GetRawParam(size_t idx) const;
 
 	RuntimeInstr(RuntimeInstrType op) : opcode(op) {}
 	RuntimeInstr() : RuntimeInstr(RuntimeInstrType::Invalid) {}
 private:
 	std::vector<std::any> params;
-};
-
-struct LocalVarState {
-	RuntimeVar* var;
-	bool dirty;
-};
-class RuntimeExecutor {
-private:
-	REG ip;
-	bool isErrored;
-	std::stack<REG> stack;
-	std::unordered_map<std::string, LocalVarState> locals;
-
-	const LocalVarState& GetLocal(std::string name);
-
-	RuntimeVar* ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr);
-public:
-	RuntimeExecutor() : ip(INVALID_REG_VALUE), isErrored(false) {};
-	void Reset() {
-		this->isErrored = false;
-		while(!this->stack.empty()) this->stack.pop();
-		this->stack.push(INVALID_REG_VALUE);
-	}
-
-	RuntimeVar* CallMethod(RuntimeCtx* ctx, RuntimeMethod* method, const RuntimeParamPack& params);
 };
 
 class RuntimeCtx
@@ -288,17 +324,78 @@ public:
 		return this->GetMethod(Hash{}(methodName));
 	}
 	RuntimeType* GetType(TID typeName);
-	//RuntimeType* GetType(ERuntimeType typeEnum); maybe pregen?
+	RuntimeType* GetType(ERuntimeType typeEnum);
 
 	RuntimeInstr* GetInstr(REG idx);
-	RuntimeInstr* AllocateFunction(size_t size);
+	RuntimeInstr* AllocateFunction(RuntimeMethod* method, size_t size);
 
 	int64_t ExecuteRoot(std::string functionName);
+
+	size_t GetCodeSize() { return this->instrHolder.size(); }
 private:
 	std::map<HashType, RuntimeMethod*> regMethods;
 	std::map<TID, RuntimeType*> regTypes;
+	std::array<RuntimeType*, (int)ERuntimeType::DEFAULT_MAX> defaultTypes;
 	std::vector<RuntimeInstr> instrHolder;
 
 	RuntimeExecutor* executor;
+};
+
+
+template<typename T>
+struct VarPool {
+	T* block;
+	int size;
+	std::list<T*> lst;
+	
+	VarPool() : block(nullptr), size(0) {}
+	VarPool(int length){
+		this->block = new T[length];
+		this->size = length;
+		for(int i = 0; i < length; ++i){
+			this->lst.push_back(this->block + i);
+		}
+	}
+	RuntimeVar* Pop(){
+		RuntimeVar* var = this->lst.front();
+		this->lst.pop_back();
+		return var;
+	}
+	bool Return(RuntimeCtx* ctx, RuntimeVar* var) {
+		assert(var >= this->block && var <= this->block + this->length);
+		var->NativeTypeConvert(ctx->GetType(ERuntimeType::Null));
+		this->lst.push_back(var);
+		return true;
+	}
+};
+
+struct LocalVarState {
+	RuntimeVar* var;
+	//bool dirty;
+};
+
+class RuntimeExecutor {
+private:
+	REG ip;
+	bool isErrored;
+	std::stack<REG> stack;
+	std::unordered_map<std::string, LocalVarState> locals;
+
+	std::map<RuntimeVar*, VarPool<RuntimeVar>> varPool;
+
+	RuntimeVar* CreateVar();
+
+	const LocalVarState& GetLocal(std::string name);
+
+	RuntimeVar* ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr);
+public:
+	RuntimeExecutor() : ip(INVALID_REG_VALUE), isErrored(false) {};
+	void Reset() {
+		this->isErrored = false;
+		while(!this->stack.empty()) this->stack.pop();
+		this->stack.push(INVALID_REG_VALUE);
+	}
+
+	RuntimeVar* CallMethod(RuntimeCtx* ctx, RuntimeMethod* method, const RuntimeParamPack& params);
 };
 

@@ -80,7 +80,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 			call.AddParam(entry.operand);
 
 			RuntimeMethod* def = ctx->GetMethod(Hash{}(entry.operand));
-			assert(def, "No registered method found");
+			assert(def); // "No registered method found"
 			int paramCount = def->GetParamCount();
 			if (paramCount < 0) {
 				PolizEntry paramCountDyn = stack.top();
@@ -174,32 +174,85 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 	}
 
 	// insert fn
-	RuntimeInstr* alloc = ctx->AllocateFunction(cmd.size());
+	RuntimeInstr* alloc = ctx->AllocateFunction(this, cmd.size());
 	std::copy(cmd.data(), cmd.data() + cmd.size(), alloc);
 }
 
+std::vector<uint8_t> RuntimeInstr::GetRawParam(size_t idx) const {
+	auto& value = this->params[idx];
+
+	ByteStream bf_write;
+
+	if (value.type() == typeid(std::string))
+		bf_write.Write(std::any_cast<std::string>(value));
+	if (value.type() == typeid(int64_t))
+		bf_write.Write(std::any_cast<int64_t>(value));
+	if (value.type() == typeid(HashType)) 
+		bf_write.Write(std::any_cast<HashType>(value));
+	if (value.type() == typeid(ERuntimeCallType))
+		bf_write.Write(std::any_cast<ERuntimeCallType>(value));
+	
+	
+
+	return bf_write.GetBuffer();
+}
 std::string RuntimeInstr::GetParamString(RuntimeCtx* ctx, size_t idx) const {
 	auto& value = this->params[idx];
 	if (value.type() == typeid(std::string))
 		return std::any_cast<std::string>(value);
 	if (value.type() == typeid(int64_t))
 		return std::to_string(std::any_cast<int64_t>(value));
-	if (value.type() == typeid(TID)) {
+	if (value.type() == typeid(HashType)) {
 		if (ctx) {
-			return ctx->GetType(std::any_cast<TID>(value))->GetName();
+			return ctx->GetType(std::any_cast<HashType>(value))->GetName();
 		}
-		return std::to_string(std::any_cast<TID>(value));
+		return std::to_string(std::any_cast<HashType>(value));
 	}
 	if (value.type() == typeid(ERuntimeCallType))
 		return ERuntimeCallType_ToString(std::any_cast<ERuntimeCallType>(value));
+	std::cout << "Unknown ret type " << std::string(value.type().name()) << std::endl;
 	assert(false);
 }
 
+RuntimeVar* RuntimeExecutor::CreateVar(){
+	for(auto& [begin, pool] : this->varPool){
+		RuntimeVar* var = pool.Pop();
+		if(var) return var;
+	}
+	// create pool
+	auto pool = VarPool<RuntimeVar>(1000);
+	this->varPool[pool.block] = pool;
+	return pool.Pop();
+}
 const LocalVarState& RuntimeExecutor::GetLocal(std::string name) {
-	return LocalVarState{};
+	auto it = this->locals.find(name);
+	if(it == this->locals.end()){
+		LocalVarState state;
+		state.var = this->CreateVar();
+		
+		this->locals[name] = state;
+		return state;
+	}
+	return it->second;
 }
 
 RuntimeVar* RuntimeExecutor::ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr) {
+	printf("Executing instruction %d\n", instr->opcode);
+
+	if(instr->opcode == RuntimeInstrType::Ctor){
+		auto& bret = instr->GetParam<std::string>(0);
+		const auto& local = this->GetLocal(bret);
+		if(local.var->heldType->GetTypeEnum() != ERuntimeType::Null)
+			local.var->NativeTypeConvert(ctx->GetType(ERuntimeType::Null)); // reset var so we don't convert
+		TID targetType = instr->GetParam<TID>(1);
+		local.var->NativeTypeConvert(ctx->GetType(targetType));
+
+		ByteStream writer;
+		for(size_t i = 2; i < 2 + instr->GetParamCount(); ++i){
+			writer.Write(instr->GetRawParam(i));
+		}
+		local.var->NativeCtor(writer.GetBuffer());
+	}
 	return nullptr;
 }
 
@@ -225,6 +278,14 @@ RuntimeVar* RuntimeExecutor::CallMethod(RuntimeCtx* ctx, RuntimeMethod* method, 
 RuntimeCtx::RuntimeCtx() {
 	this->executor = new RuntimeExecutor();
 	Precompile::CreateTypes(this);
+	
+	// set default
+	this->defaultTypes[(int)ERuntimeType::Int64] = this->GetType(Hash{}("Int64"));
+	this->defaultTypes[(int)ERuntimeType::String] = this->GetType(Hash{}("String"));
+	this->defaultTypes[(int)ERuntimeType::Null] = this->GetType(Hash{}("Null"));
+	this->defaultTypes[(int)ERuntimeType::Array] = this->GetType(Hash{}("Array"));
+	this->defaultTypes[(int)ERuntimeType::Double] = this->GetType(Hash{}("Double"));
+
 }
 RuntimeCtx::~RuntimeCtx() {
 	if (this->executor) {
@@ -244,6 +305,9 @@ RuntimeType* RuntimeCtx::GetType(TID typeName) {
 	if (it == this->regTypes.end())
 		return nullptr;
 	return it->second;
+}
+RuntimeType* RuntimeCtx::GetType(ERuntimeType typeEnum){
+	return this->defaultTypes[static_cast<int>(typeEnum)];
 }
 
 void RuntimeCtx::AddPoliz(Parser* parser, Poliz* root) {
@@ -293,7 +357,8 @@ void RuntimeCtx::AddMethod(RuntimeMethod* method) {
 	this->regMethods[Hash{}(method->GetName())] = method;
 }
 
-RuntimeInstr* RuntimeCtx::AllocateFunction(size_t size) {
+RuntimeInstr* RuntimeCtx::AllocateFunction(RuntimeMethod* method, size_t size) {
+	method->SetVA(this->instrHolder.size());
 	this->instrHolder.resize(this->instrHolder.size() + size);
 	return &this->instrHolder[this->instrHolder.size() - size];
 }

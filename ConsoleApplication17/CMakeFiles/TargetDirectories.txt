@@ -1,0 +1,3 @@
+/Users/user/Documents/GitHub/ConsoleApplication17_2/ConsoleApplication17/CMakeFiles/ConsoleApplication17.dir
+/Users/user/Documents/GitHub/ConsoleApplication17_2/ConsoleApplication17/CMakeFiles/edit_cache.dir
+/Users/user/Documents/GitHub/ConsoleApplication17_2/ConsoleApplication17/CMakeFiles/rebuild_cache.dir

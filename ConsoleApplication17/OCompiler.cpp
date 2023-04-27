@@ -200,7 +200,7 @@ CompilationResult* Compiler::Compile(string inputFile) {
 	this->runtime = new RuntimeCtx();
 	this->runtime->AddPoliz(this->parser, &this->parser->poliz);
 
-	// this->runtime->GetMethod("main")->Invoke();
+	this->runtime->ExecuteRoot("main");
 
 	return result;
 }
