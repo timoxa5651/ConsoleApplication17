@@ -51,15 +51,17 @@ inline std::string PolizCmdToStr(PolizCmd cmd){
 
 class PolizEntry {
 public:
-    PolizEntry(int id, PolizCmd cmd, const std::string& operand){
+    PolizEntry(int id, PolizCmd cmd, const std::string& operand, int polizEntryIdx){
         this->id = id;
         this->cmd = cmd;
         this->operand = operand;
+        this->polizEntryIdx = polizEntryIdx;
     }
 
     int id;
     PolizCmd cmd;
     std::string operand;
+    int polizEntryIdx;
 };
 
 class Poliz {
@@ -75,7 +77,7 @@ public:
     void changeEntryCmd(int address, PolizCmd cmd);
     PolizCmd getLastEntryType() { return poliz.empty() ? PolizCmd::Invalid : poliz[poliz.size() - 1].cmd; };
     void addEntry(PolizEntry entry);
-    void addEntry(PolizCmd operation, std::string operand);
+    void addEntry(PolizCmd operation, std::string operand, int lexemeIdx);
     void addFunction(const std::string& name, Poliz& funcPoliz);
     void pushCallStack(int address);
     void Reverse();

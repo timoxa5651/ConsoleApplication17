@@ -23,8 +23,8 @@ int Poliz::GetReturnAddress() {
     return returnAddress;
 }
 
-void Poliz::addEntry(PolizCmd operation, std::string operand) {
-    poliz.emplace_back( poliz.empty() ? 0 : poliz.back().id + 1, operation, operand);
+void Poliz::addEntry(PolizCmd operation, std::string operand, int lexemeIdx) {
+    poliz.emplace_back( poliz.empty() ? 0 : poliz.back().id + 1, operation, operand, lexemeIdx);
 }
 
 void Poliz::addEntry(PolizEntry entry) {

@@ -69,7 +69,7 @@ bool Parser::Check(CompilationResult* result) {
 		//ReadLexeme();
 		this->poliz = Program();
 		if (this->poliz.getLastEntryType() != PolizCmd::Ret) {
-			this->poliz.addEntry(PolizCmd::Ret, "0");
+			this->poliz.addEntry(PolizCmd::Ret, "0", currentLexemeIdx);
 		}
 	}
 	catch (ParserException& exception) {
@@ -186,7 +186,7 @@ Poliz Parser::Program() {
                     std::string funcName = curLexeme_.string;
                     auto func = Function();
 					if (func.getLastEntryType() != PolizCmd::Ret) {
-						func.addEntry(PolizCmd::Ret, "0");
+						func.addEntry(PolizCmd::Ret, "0", currentLexemeIdx);
 					}
                     programPoliz.addFunction(funcName, func);
 //                    programPoliz += Function();
@@ -323,7 +323,7 @@ Poliz Parser::Priority1() {
         auto operand = Priority2();
         ReadLexeme();
         res += operand;
-        res.addEntry(PolizCmd::Operation, cmd);
+        res.addEntry(PolizCmd::Operation, cmd, currentLexemeIdx);
 	}
 	this->MovePtr(-1);
     return res;
@@ -338,7 +338,7 @@ Poliz Parser::Priority2() {
         auto operand = Priority3();
         ReadLexeme();
         res += operand;
-        res.addEntry(PolizCmd::Operation, cmd);
+        res.addEntry(PolizCmd::Operation, cmd, currentLexemeIdx);
 	}
 	this->MovePtr(-1);
     return res;
@@ -353,7 +353,7 @@ Poliz Parser::Priority3() {
         auto operand = Priority4();
         ReadLexeme();
         res += operand;
-        res.addEntry(PolizCmd::Operation, cmd);
+        res.addEntry(PolizCmd::Operation, cmd, currentLexemeIdx);
 	}
 	this->MovePtr(-1);
     return res;
@@ -368,7 +368,7 @@ Poliz Parser::Priority4() {
         auto operand = Priority5();
         ReadLexeme();
         res += operand;
-        res.addEntry(PolizCmd::Operation, cmd);
+        res.addEntry(PolizCmd::Operation, cmd, currentLexemeIdx);
 	}
 	this->MovePtr(-1);
     return res;
@@ -383,7 +383,7 @@ Poliz Parser::Priority5() {
 		auto operand = Priority6();
 		ReadLexeme();
         res += operand;
-        res.addEntry(PolizCmd::Operation, cmd);
+        res.addEntry(PolizCmd::Operation, cmd, currentLexemeIdx);
 	}
 	this->MovePtr(-1);
     return res;
@@ -398,7 +398,7 @@ Poliz Parser::Priority6() {
 		auto operand = Priority7();
 		ReadLexeme();
         res += operand;
-        res.addEntry(PolizCmd::Operation, cmd);
+        res.addEntry(PolizCmd::Operation, cmd, currentLexemeIdx);
 	}
 	this->MovePtr(-1);
     return res;
@@ -409,7 +409,7 @@ Poliz Parser::Priority7() {
         auto cmd = curLexeme_.string;
 		ReadLexeme();
 		auto operand = Priority8();
-        operand.addEntry(PolizCmd::UnOperation, cmd);
+        operand.addEntry(PolizCmd::UnOperation, cmd, currentLexemeIdx);
         return operand;
 	}
 	else {
@@ -463,14 +463,14 @@ Poliz Parser::FunctionCall() {
 		passedParams = args.first;
 		//args.second.Reverse();
 		if (dFunc.numArgs < 0) {
-			args.second.addEntry(PolizCmd::ConstInt, std::to_string(passedParams));
+			args.second.addEntry(PolizCmd::ConstInt, std::to_string(passedParams), currentLexemeIdx);
 		}
         res += args.second;
         res += funcName;
 	}
 	else {
 		if (dFunc.numArgs < 0) {
-			res.addEntry(PolizCmd::ConstInt, std::to_string(passedParams));
+			res.addEntry(PolizCmd::ConstInt, std::to_string(passedParams), currentLexemeIdx);
 		}
 		if (dFunc.numArgs >= 0 && dFunc.numArgs != passedParams) {
 			throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid arguments " + std::to_string(passedParams) + " != " + std::to_string(dFunc.numArgs));
@@ -520,7 +520,7 @@ Poliz Parser::String() {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "invalid string literal");
 	}
     Poliz res;
-    res.addEntry(PolizCmd::Str, curLexeme_.string);
+    res.addEntry(PolizCmd::Str, curLexeme_.string, currentLexemeIdx);
     return res;
 }
 
@@ -546,7 +546,7 @@ Poliz Parser::Name() {
 	}
 	this->lastReadName = curLexeme_.string;
     Poliz res;
-    res.addEntry(PolizCmd::Var, curLexeme_.string);
+    res.addEntry(PolizCmd::Var, curLexeme_.string, currentLexemeIdx);
     return res;
 //    if (isInFuncCall) {
 //        poliz.addEntryToBlock(PolizCmd::Call, curLexeme_.string);
@@ -561,10 +561,10 @@ Poliz Parser::Num() {
 	}
     Poliz res;
 	if (curLexeme_.type == ELexemeType::LiteralDouble) {
-		res.addEntry(PolizCmd::ConstDbl, curLexeme_.string);
+		res.addEntry(PolizCmd::ConstDbl, curLexeme_.string, currentLexemeIdx);
 	}
 	else {
-		res.addEntry(PolizCmd::ConstInt, curLexeme_.string);
+		res.addEntry(PolizCmd::ConstInt, curLexeme_.string, currentLexemeIdx);
 	}
     return res;
 //    poliz.addEntryToBlock(PolizCmd::Const, curLexeme_.string);
@@ -610,7 +610,7 @@ Poliz Parser::Return() {
 	else {
 		this->MovePtr(-1);
 	}
-    val.addEntry(PolizCmd::Ret, "1");
+    val.addEntry(PolizCmd::Ret, "1", currentLexemeIdx);
     return val;
 }
 
@@ -637,7 +637,7 @@ Poliz Parser::Assign() {
 		this->currentScope->InsertVariable(newVar);
 	}
     Poliz res = assignTo + value;
-    res.addEntry(PolizCmd::Operation, "=");
+    res.addEntry(PolizCmd::Operation, "=", currentLexemeIdx);
     return res;
 }
 
@@ -672,7 +672,7 @@ Poliz Parser::TemporaryList() {
 	}
 //    args.second.Reverse();
     res += args.second;
-    res.addEntry(PolizCmd::Array, std::to_string(args.first));
+    res.addEntry(PolizCmd::Array, std::to_string(args.first), currentLexemeIdx);
 
 	if (curLexeme_.string != "]") {
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected closing box bracket in list declaration");
@@ -705,7 +705,7 @@ Poliz Parser::If() {
 	ReadLexeme();
 	auto block = Block();
 	ReadLexeme();
-    val.addEntry(PolizCmd::Jz, std::to_string(block.GetSize() + 2));
+    val.addEntry(PolizCmd::Jz, std::to_string(block.GetSize() + 2), currentLexemeIdx);
     val += block;
 
     Poliz eBlock;
@@ -715,7 +715,7 @@ Poliz Parser::If() {
 	else {
 		this->MovePtr(-1);
 	}
-    val.addEntry(PolizCmd::Jump, std::to_string(eBlock.GetSize() + 1));
+    val.addEntry(PolizCmd::Jump, std::to_string(eBlock.GetSize() + 1), currentLexemeIdx);
     val += eBlock;
     return val;
 }
@@ -762,32 +762,32 @@ Poliz Parser::For() {
 	auto block = Block();
 
 
-    res.addEntry(PolizCmd::Var, tmpVarName);
+    res.addEntry(PolizCmd::Var, tmpVarName, currentLexemeIdx);
     res += container;
-    res.addEntry(PolizCmd::Operation, "=");
+    res.addEntry(PolizCmd::Operation, "=", currentLexemeIdx);
 //    res += itr;
-    res.addEntry(PolizCmd::Var, tmpItrName);
-    res.addEntry(PolizCmd::ConstInt, "0");
-    res.addEntry(PolizCmd::Operation, "=");
+    res.addEntry(PolizCmd::Var, tmpItrName, currentLexemeIdx);
+    res.addEntry(PolizCmd::ConstInt, "0", currentLexemeIdx);
+    res.addEntry(PolizCmd::Operation, "=", currentLexemeIdx);
 
     int conditionFlag = res.GetSize();
 
-    res.addEntry(PolizCmd::Var, tmpItrName);
-    res.addEntry(PolizCmd::ArraySize, tmpVarName);
-    res.addEntry(PolizCmd::Jge, std::to_string(block.GetSize() + itr.GetSize() + 10));
+    res.addEntry(PolizCmd::Var, tmpItrName, currentLexemeIdx);
+    res.addEntry(PolizCmd::ArraySize, tmpVarName, currentLexemeIdx);
+    res.addEntry(PolizCmd::Jge, std::to_string(block.GetSize() + itr.GetSize() + 10), currentLexemeIdx);
 
     res += itr;
-    res.addEntry(PolizCmd::Var, tmpItrName);
-    res.addEntry(PolizCmd::ArrayAccess, tmpVarName);
-    res.addEntry(PolizCmd::Operation, "=");
+    res.addEntry(PolizCmd::Var, tmpItrName, currentLexemeIdx);
+    res.addEntry(PolizCmd::ArrayAccess, tmpVarName, currentLexemeIdx);
+    res.addEntry(PolizCmd::Operation, "=", currentLexemeIdx);
 
     res += block;
-    res.addEntry(PolizCmd::Var, tmpItrName);
-    res.addEntry(PolizCmd::Var, tmpItrName);
-    res.addEntry(PolizCmd::ConstInt, "1");
-    res.addEntry(PolizCmd::Operation, "+");
-    res.addEntry(PolizCmd::Operation, "=");
-    res.addEntry(PolizCmd::Jump, std::to_string(conditionFlag - res.GetSize()));
+    res.addEntry(PolizCmd::Var, tmpItrName, currentLexemeIdx);
+    res.addEntry(PolizCmd::Var, tmpItrName, currentLexemeIdx);
+    res.addEntry(PolizCmd::ConstInt, "1", currentLexemeIdx);
+    res.addEntry(PolizCmd::Operation, "+", currentLexemeIdx);
+    res.addEntry(PolizCmd::Operation, "=", currentLexemeIdx);
+    res.addEntry(PolizCmd::Jump, std::to_string(conditionFlag - res.GetSize()), currentLexemeIdx);
     --nextTmpVarSuffix;
     return res;
 }
@@ -809,9 +809,9 @@ Poliz Parser::While() {
 	ReadLexeme();
 	auto block = Block();
     int jumpAddress = 0;
-    val.addEntry(PolizCmd::Jz, std::to_string(block.GetSize() + 2));
+    val.addEntry(PolizCmd::Jz, std::to_string(block.GetSize() + 2), currentLexemeIdx);
     val += block;
-    val.addEntry(PolizCmd::Jump, std::to_string(jumpAddress - val.GetSize()));
+    val.addEntry(PolizCmd::Jump, std::to_string(jumpAddress - val.GetSize()), currentLexemeIdx);
     return val;
 }
 
