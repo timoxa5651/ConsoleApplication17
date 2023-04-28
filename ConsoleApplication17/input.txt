@@ -1,11 +1,23 @@
-function f(a){
-    if(a <= 1){
-        return a;   
+function f(a, b){
+    if(b == 0) {
+        return a;
     }
-    return a + f(a - 1);
+    return f(b, a % b);
+}
+
+function fun2(n){
+     if(n == 0) {
+        return 0;
+     }
+     print("*");
+     return fun1(n - 1);
+}
+function fun1(n){
+    print("#", n);
+    return fun2(n - 1);
 }
 
 function main(){
-    print(1.0 / 3.0);
+    a = 2 + 2 * 2 - (5 + 7);
     return 0;
 }

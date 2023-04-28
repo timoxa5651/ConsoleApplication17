@@ -33,7 +33,7 @@ void FunctionScope::InsertVariable(const string& variableName) {
 }
 
 vector<LexemeSyntax> Compiler::GetLexems(string inputFile) {
-	vector<string> resvOperators = { "+", "*", "/", "-", "%", "=", "&&", "==", "!=", "||", "<", "<=", ">=", ">", "//" };
+	vector<string> resvOperators = { "!", "+", "*", "/", "-", "%", "=", "&&", "==", "!=", "||", "<", "<=", ">=", ">", "//" };
 	vector<string> resvKeywords = { "while", "for", "if", "switch", "return", "function" };
 	std::ifstream t(inputFile);
 	if (!t.good()) {

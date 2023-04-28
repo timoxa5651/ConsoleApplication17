@@ -274,7 +274,7 @@ RuntimeVar* RuntimeExecutor::CreateVar(RuntimeCtx* ctx) {
 		if (var) return var;
 	}
 	// create pool
-	printf("[dbg] Allocating VarPool: %d\n", 1000);
+	//printf("[dbg] Allocating VarPool: %d\n", 1000);
 	auto pool = VarPool<RuntimeVar>(ctx, 1000);
 	this->varPool[pool.block] = pool;
 	return this->CreateVar(ctx);
@@ -374,7 +374,7 @@ RuntimeVar* RuntimeExecutor::ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr) 
 
 		if (callType == ERuntimeCallType::UnNot) {
 			RuntimeVar* newRet = this->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Int64));
-			newRet->data.i64 = !p1.var->IsFalse();
+			newRet->data.i64 = p1.var->IsFalse();
 			this->SetLocal(ctx, bret, newRet);
 		}
 		else {
@@ -392,7 +392,7 @@ RuntimeVar* RuntimeExecutor::ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr) 
 		if (callType == ERuntimeCallType::Assign) {
 			if (ret.var->GetType()->GetTypeEnum() != ERuntimeType::Null)
 				ret.var->NativeTypeConvert(ctx->GetType(ERuntimeType::Null));
-			ret.var->CopyFrom(target.var);
+			ret.var->CopyFrom(ctx, ctx->GetExecutor(), target.var);
 		}
 		else {
 			const string& bp1 = instr->GetParam<std::string>(2);
@@ -512,8 +512,24 @@ RuntimeVar* RuntimeExecutor::ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr) 
 		this->ip = nextIp;
 	}
 	else if (instr->opcode == RuntimeInstrType::Array) {
+        auto& bret = instr->GetParam<std::string>(0);
+        LocalVarState local = this->GetLocal(ctx, bret);
+        if (local.var->GetType()->GetTypeEnum() != ERuntimeType::Null)
+            local.var->NativeTypeConvert(ctx->GetType(ERuntimeType::Null)); // reset var so we don't convert
 
-	}
+        local.var->NativeTypeConvert(ctx->GetType(ERuntimeType::Array));
+        ByteStream stream;
+        stream.Write<int64_t>(instr->GetParamCount() - 1);
+        local.var->NativeCtor(stream);
+
+        for(size_t i = 1; i < instr->GetParamCount(); ++i){
+            auto& bret = instr->GetParam<std::string>(i);
+            LocalVarState p2 = this->GetLocal(ctx, bret);
+
+            local.var->CallOperator(ERuntimeCallType::ArrayAppend, ctx, this, p2.var);
+        }
+
+    }
 	else if (instr->opcode == RuntimeInstrType::Jz) {
 		auto& bcond = instr->GetParam<std::string>(1);
 		LocalVarState state = this->GetLocal(ctx, bcond);
@@ -554,6 +570,9 @@ RuntimeVar* RuntimeExecutor::ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr) 
 		LocalVarState state = this->GetLocal(ctx, bret);
 		return state.var;
 	}
+    else if(instr->opcode == RuntimeInstrType::ArrayAccess){
+
+    }
 
 	return nullptr;
 }
@@ -569,7 +588,7 @@ RuntimeVar* RuntimeExecutor::CallMethod(RuntimeCtx* ctx, RuntimeMethod* method, 
 	auto& names = method->GetParamNames();
 	for (size_t i = 0; i < method->GetParamCount(); ++i) {
 		auto state = this->GetLocal(ctx, names[i]);
-		state.var->CopyFrom(params.vars[i]);
+		state.var->CopyFrom(ctx, this, params.vars[i]);
 		//this->currentScope->SetLocal(this, ctx, names[i], state.var, true); -- pass as reference
 	}
 
@@ -589,7 +608,7 @@ RuntimeVar* RuntimeExecutor::CallMethod(RuntimeCtx* ctx, RuntimeMethod* method, 
 	}
 	if (returnVar) {
 		RuntimeVar* retCopy = this->CreateVar(ctx);
-		retCopy->CopyFrom(returnVar);
+		retCopy->CopyFrom(ctx, this, returnVar);
 		returnVar = retCopy;
 	}
 
@@ -700,4 +719,29 @@ RuntimeInstr* RuntimeCtx::AllocateFunction(RuntimeMethod* method, size_t size) {
 }
 RuntimeInstr* RuntimeCtx::GetInstr(REG idx) {
 	return &this->instrHolder[idx];
+}
+
+RuntimeVar* RuntimeVar::CopyFrom(RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* other){
+    assert(this->heldType->GetTypeEnum() == ERuntimeType::Null);
+
+    this->heldType = other->heldType;
+    if (other->heldType->GetTypeEnum() == ERuntimeType::String) {
+        ByteStream stream;
+        stream.Write(std::string(other->data.str.ptr, other->data.str.ptr + other->data.str.size));
+        this->NativeCtor(stream);
+    }
+    else if (other->heldType->GetTypeEnum() == ERuntimeType::Array) {
+        ByteStream stream;
+        stream.Write(other->data.arr.cap);
+        this->NativeCtor(stream);
+        for(size_t i = 0; i < other->data.arr.size; ++i){
+            RuntimeVar* cp = exec->CreateVar(ctx);
+            this->data.arr.data[i] = other->data.arr.data[i];
+        }
+        this->data.arr.size = other->data.arr.size;
+        // copy Array
+    }
+    else {
+        this->data = other->data;
+    }
 }

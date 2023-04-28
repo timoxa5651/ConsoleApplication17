@@ -112,6 +112,11 @@ void Parser::ClassBlock() {
 }
 
 void Parser::Precompile() {
+    DeclaredFunction func0;
+    func0.name = "fun1";
+    func0.numArgs = 1;
+    declaredFunctions[""].insert(func0);
+
 	DeclaredFunction func;
 	func.name = "print";
 	func.numArgs = -1;
@@ -121,6 +126,11 @@ void Parser::Precompile() {
 	func2.name = "read";
 	func2.numArgs = -1;
 	declaredFunctions[""].insert(func2);
+
+    DeclaredFunction func3;
+    func3.name = "int";
+    func3.numArgs = 1;
+    declaredFunctions[""].insert(func3);
 }
 
 Poliz Parser::Program() {

@@ -116,11 +116,19 @@ RuntimeType* Precompile::Type_Int64() {
 	type->SetOperator(ERuntimeCallType::Div, [](RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* p1, RuntimeVar* p2) -> RuntimeVar* {
 		ERuntimeType targetType = p2->GetType()->GetTypeEnum();
 		if (targetType == ERuntimeType::Int64) {
+            if(p2->data.i64 == 0){
+                exec->SetError("Division by zero");
+                return nullptr;
+            }
 			RuntimeVar* ret = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Double));
 			ret->data.dbl = (double)p1->data.i64 / p2->data.i64;
 			return ret;
 		}
 		else if (targetType == ERuntimeType::Double) {
+            if(p2->data.dbl == 0){
+                exec->SetError("Division by zero");
+                return nullptr;
+            }
 			RuntimeVar* ret = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Double));
 			ret->data.dbl = p1->data.i64 / p2->data.dbl;
 			return ret;
@@ -266,11 +274,19 @@ RuntimeType* Precompile::Type_Double() {
 	type->SetOperator(ERuntimeCallType::Div, [](RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* p1, RuntimeVar* p2) -> RuntimeVar* {
 		ERuntimeType targetType = p2->GetType()->GetTypeEnum();
 		if (targetType == ERuntimeType::Int64) {
+            if(p2->data.i64 == 0){
+                exec->SetError("Division by zero");
+                return nullptr;
+            }
 			RuntimeVar* ret = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Double));
 			ret->data.dbl = p1->data.dbl / p2->data.i64;
 			return ret;
 		}
 		else if (targetType == ERuntimeType::Double) {
+            if(p2->data.dbl == 0){
+                exec->SetError("Division by zero");
+                return nullptr;
+            }
 			RuntimeVar* ret = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Double));
 			ret->data.dbl = p1->data.dbl / p2->data.dbl;
 			return ret;
@@ -437,36 +453,77 @@ RuntimeType* Precompile::Type_Array() {
 	RuntimeType* type = new RuntimeType("Array", ERuntimeType::Array, sizeof(RuntimeVar::data.arr));
 
 	type->SetNativeTypeConvert([](RuntimeVar* var, RuntimeType* type) -> bool {
-
+        if(type->GetTypeEnum() == ERuntimeType::Null){
+            if(var->data.arr.data){
+                delete var->data.arr.data;
+                var->data.arr.data = 0;
+            }
+            var->data.arr.size = var->data.arr.cap = 0;
+        }
 		return false;
 	});
+    type->SetNativeCtor([](RuntimeVar* var, ByteStream& stream) {
+        int64_t cap = stream.Read<int64_t>();
+        var->data.arr.size = 0;
+        var->data.arr.data = new RuntimeVar*[cap];
+        var->data.arr.cap = cap;
+    });
 
 	return type;
 }
 
 void Precompile::AddReservedMethods(RuntimeCtx* ctx) {
-	ctx->AddMethod(new RuntimeMethod("print", [](RuntimeCtx* ctx, RuntimeExecutor* exec, const std::vector<RuntimeVar*>& params) -> RuntimeVar* {
-		printf("[Script] ");
-		int arg = 1;
-		for (auto& param : params) {
-			RuntimeVar* str = exec->CreateVar(ctx);
-			str->CopyFrom(param);
-			if (param->GetType()->GetTypeEnum() == ERuntimeType::Null || !str->NativeTypeConvert(ctx->GetType(ERuntimeType::String))) {
-				exec->SetError("print: Invalid argument " + std::to_string(arg) + ", not string");
-			}
-			else {
-				printf("%s ", str->data.str.ptr);
-			}
-			exec->ReturnVar(ctx, str);
-			arg += 1;
-		}
-		printf("\n");
-		return exec->CreateVar(ctx);
-	}));
+    ctx->AddMethod(new RuntimeMethod("print", [](RuntimeCtx *ctx, RuntimeExecutor *exec,
+                                                 const std::vector<RuntimeVar *> &params) -> RuntimeVar * {
+        printf("[Script] ");
+        int arg = 1;
+        for (auto &param: params) {
+            RuntimeVar *str = exec->CreateVar(ctx);
+            str->CopyFrom(ctx, ctx->GetExecutor(), param);
+            if (param->GetType()->GetTypeEnum() == ERuntimeType::Null ||
+                !str->NativeTypeConvert(ctx->GetType(ERuntimeType::String))) {
+                exec->SetError("print: Invalid argument " + std::to_string(arg) + ", not string");
+            } else {
+                printf("%s ", str->data.str.ptr);
+            }
+            exec->ReturnVar(ctx, str);
+            arg += 1;
+        }
+        printf("\n");
+        return exec->CreateVar(ctx);
+    }));
 
-	ctx->AddMethod(new RuntimeMethod("read", [](RuntimeCtx* ctx, RuntimeExecutor* exec, const std::vector<RuntimeVar*>& params) -> RuntimeVar* {
-		return exec->CreateVar(ctx);
-	}));
+    ctx->AddMethod(new RuntimeMethod("read", [](RuntimeCtx *ctx, RuntimeExecutor *exec,
+                                                const std::vector<RuntimeVar *> &params) -> RuntimeVar * {
+        std::string str;
+        std::cin >> str;
+        RuntimeVar *var = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::String));
+        ByteStream stream;
+        stream.Write(str);
+        var->NativeCtor(stream);
+        return var;
+    }));
+
+    ctx->AddMethod(new RuntimeMethod("int", {"i"}, [](RuntimeCtx *ctx, RuntimeExecutor *exec,
+                                               const std::vector<RuntimeVar *> &params) -> RuntimeVar * {
+        if (params[0]->GetType()->GetTypeEnum() != ERuntimeType::String) {
+            exec->SetError("Failed to convert to int");
+            return 0;
+        }
+        std::string str = params[0]->data.str.ptr;
+
+        ByteStream stream;
+        try {
+            stream.Write(std::stoll(str));
+        }
+        catch (...) {
+            exec->SetError("Failed to convert to int");
+            return 0;
+        }
+        RuntimeVar *var = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Int64));
+        var->NativeCtor(stream);
+        return var;
+    }));
 }
 
 void Precompile::CreateTypes(RuntimeCtx* ctx) {
@@ -474,6 +531,7 @@ void Precompile::CreateTypes(RuntimeCtx* ctx) {
 	ctx->AddType(Precompile::Type_Int64());
 	ctx->AddType(Precompile::Type_Double());
 	ctx->AddType(Precompile::Type_String());
+    ctx->AddType(Precompile::Type_Array());
 
 	AddReservedMethods(ctx);
 }

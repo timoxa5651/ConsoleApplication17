@@ -49,6 +49,10 @@ enum class ERuntimeCallType {
 	Or,
 	And,
 
+    ArrayAppend,
+    ArrayAccess,
+    ArraySize,
+
 	MAX
 };
 inline std::string ERuntimeCallType_ToString(ERuntimeCallType c) {
@@ -280,6 +284,8 @@ public:
 	}
 };
 
+class RuntimeExecutor;
+class RuntimeCtx;
 class RuntimeVar {
 	RuntimeType* heldType;
 public:
@@ -324,26 +330,8 @@ public:
 		return this->heldType->CallOperator(type, ctx, exec, this, p2);
 	}
 
-	void CopyFrom(RuntimeVar* other) {
-		assert(this->heldType->GetTypeEnum() == ERuntimeType::Null);
+	RuntimeVar* CopyFrom(RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* other);
 
-		this->heldType = other->heldType;
-		if (other->heldType->GetTypeEnum() == ERuntimeType::String) {
-			ByteStream stream;
-			stream.Write(std::string(other->data.str.ptr, other->data.str.ptr + other->data.str.size));
-			this->NativeCtor(stream);
-		}
-		else if (other->heldType->GetTypeEnum() == ERuntimeType::Array) {
-			//ByteStream stream;
-			//stream.Write(std::string(other->data.str.ptr, other->data.str.ptr + other->data.str.size));
-			//this->NativeCtor(stream);
-			assert(false);
-			// copy Array
-		}
-		else {
-			this->data = other->data;
-		}
-	}
 
 	bool IsFalse() {
 		if(this->heldType->HasIsFalseHandler())
@@ -498,6 +486,7 @@ public:
 	RuntimeInstr* AllocateFunction(RuntimeMethod* method, size_t size);
 
 	int64_t ExecuteRoot(std::string functionName);
+    RuntimeExecutor* GetExecutor(){ return this->executor; }
 
 	std::string GetErrorString();
 	size_t GetCodeSize() { return this->instrHolder.size(); }
