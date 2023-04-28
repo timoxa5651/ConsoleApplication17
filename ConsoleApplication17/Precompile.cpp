@@ -116,8 +116,8 @@ RuntimeType* Precompile::Type_Int64() {
 	type->SetOperator(ERuntimeCallType::Div, [](RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* p1, RuntimeVar* p2) -> RuntimeVar* {
 		ERuntimeType targetType = p2->GetType()->GetTypeEnum();
 		if (targetType == ERuntimeType::Int64) {
-			RuntimeVar* ret = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Int64));
-			ret->data.i64 = p1->data.i64 / p2->data.i64;
+			RuntimeVar* ret = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Double));
+			ret->data.dbl = (double)p1->data.i64 / p2->data.i64;
 			return ret;
 		}
 		else if (targetType == ERuntimeType::Double) {
@@ -194,7 +194,7 @@ RuntimeType* Precompile::Type_Double() {
 	RuntimeType* type = new RuntimeType("Double", ERuntimeType::Double, 8);
 	type->SetNativeCtor([](RuntimeVar* var, ByteStream& stream) {
 		var->data.dbl = stream.Read<double>();
-		printf("Double: %p -> %.2f\n", var, (float)var->data.dbl);
+		//printf("Double: %p -> %.2f\n", var, (float)var->data.dbl);
 	});
 
 	type->SetNativeTypeConvert([](RuntimeVar* var, RuntimeType* type) -> bool {

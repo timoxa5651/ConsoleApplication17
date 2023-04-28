@@ -424,6 +424,8 @@ enum class RuntimeInstrType {
 	Jge, // Jge [delta] [var]
 	Jmp, // Jmp [delta]
 	Ret, // Ret [value]
+    ArraySize, // ArraySize [ret] [array]
+    ArrayAccess, // ArrayAccess [ret] [idx] [idx]
 };
 inline std::string RuntimeInstrType_ToString(RuntimeInstrType c) {
 	switch (c) {
@@ -446,7 +448,7 @@ struct RuntimeInstr {
 
 	template<typename T>
 	void AddParam(T param) {
-		static_assert(std::is_same_v<T, std::string> || std::is_same_v<T, int64_t> || std::is_same_v<T, HashType> || std::is_same_v<T, TID> || std::is_same_v<T, ERuntimeCallType>);
+		static_assert(std::is_same_v<T, double> || std::is_same_v<T, std::string> || std::is_same_v<T, int64_t> || std::is_same_v<T, HashType> || std::is_same_v<T, TID> || std::is_same_v<T, ERuntimeCallType>);
 		this->params.push_back(param);
 	}
 

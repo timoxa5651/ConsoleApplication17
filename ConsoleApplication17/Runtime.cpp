@@ -29,6 +29,10 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 			instr.AddParam<TID>(Hash{}("Int64"));
 			instr.AddParam(std::stoll(entry.operand.c_str()));
 		}
+        else if (entry.cmd == PolizCmd::ConstDbl) {
+            instr.AddParam<TID>(Hash{}("Double"));
+            instr.AddParam<double>(std::stod(entry.operand.c_str()));
+        }
 		else if (entry.cmd == PolizCmd::Null) {
 			instr.AddParam<TID>(Hash{}("Null"));
 		}
@@ -68,7 +72,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 			oper.AddParam(CreateScriptingInst(oper, pr1));
 			oper.AddParam(CreateScriptingInst(oper, pr2));
 
-			stack.push(PolizEntry{ -1, PolizCmd::Var, retName });
+			stack.push(PolizEntry{ -1, PolizCmd::Var, retName, pr1.polizEntryIdx });
 			cmd.push_back(oper);
 			break;
 		}
@@ -85,7 +89,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 
 			oper.AddParam(CreateScriptingInst(oper, pr1));
 
-			stack.push(PolizEntry{ -1, PolizCmd::Var, retName });
+			stack.push(PolizEntry{ -1, PolizCmd::Var, retName, pr1.polizEntryIdx });
 			cmd.push_back(oper);
 			break;
 		}
@@ -110,7 +114,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 				stack.pop();
 				call.AddParam(CreateScriptingInst(call, pr));
 			}
-			stack.push(PolizEntry{ -1, PolizCmd::Var, retName });
+			stack.push(PolizEntry{ -1, PolizCmd::Var, retName, entry.polizEntryIdx });
 
 			cmd.push_back(call);
 			break;
@@ -128,10 +132,41 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 				array.AddParam(CreateScriptingInst(array, pr));
 			}
 
-			stack.push(PolizEntry{ -1, PolizCmd::Var, retName });
+			stack.push(PolizEntry{ -1, PolizCmd::Var, retName, entry.polizEntryIdx });
 			cmd.push_back(array);
 			break;
 		}
+        case PolizCmd::ArraySize: {
+                RuntimeInstr array(RuntimeInstrType::ArraySize);
+
+                std::string retName = "$ctor" + std::to_string(ctorCnt++);
+                array.AddParam(retName);
+                PolizEntry pr = stack.top();
+                stack.pop();
+                assert(pr.cmd == PolizCmd::Var);
+                array.AddParam(CreateScriptingInst(array, pr));
+
+                stack.push(PolizEntry{ -1, PolizCmd::Var, retName, entry.polizEntryIdx });
+                cmd.push_back(array);
+                break;
+        }
+        case PolizCmd::ArrayAccess:{
+            RuntimeInstr array(RuntimeInstrType::ArrayAccess);
+
+            std::string retName = "$ctor" + std::to_string(ctorCnt++);
+            array.AddParam(retName);
+            PolizEntry pr2 = stack.top();
+            stack.pop();
+            PolizEntry pr1 = stack.top();
+            stack.pop();
+            assert(pr2.cmd == PolizCmd::Var); // array
+            array.AddParam(CreateScriptingInst(array, pr1));
+            array.AddParam(CreateScriptingInst(array, pr2));
+
+            stack.push(PolizEntry{ -1, PolizCmd::Var, retName, entry.polizEntryIdx });
+            cmd.push_back(array);
+            break;
+        }
 		case PolizCmd::Jz: {
 			PolizEntry actionVar = stack.top();
 			int64_t delta = std::stoll(entry.operand);
@@ -159,7 +194,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 				ret.AddParam(CreateScriptingInst(ret, actionVar));
 			}
 			else {
-				ret.AddParam(CreateScriptingInst(ret, PolizEntry(-1, PolizCmd::Null, "")));
+				ret.AddParam(CreateScriptingInst(ret, PolizEntry(-1, PolizCmd::Null, "", entry.polizEntryIdx)));
 			}
 			cmd.push_back(ret);
 			break;
@@ -204,12 +239,12 @@ std::vector<uint8_t> RuntimeInstr::GetRawParam(size_t idx) const {
 		bf_write.Write(std::any_cast<std::string>(value));
 	if (value.type() == typeid(int64_t))
 		bf_write.Write(std::any_cast<int64_t>(value));
+    if (value.type() == typeid(double))
+        bf_write.Write(std::any_cast<double>(value));
 	if (value.type() == typeid(HashType))
 		bf_write.Write(std::any_cast<HashType>(value));
 	if (value.type() == typeid(ERuntimeCallType))
 		bf_write.Write(std::any_cast<ERuntimeCallType>(value));
-
-
 
 	return bf_write.GetBuffer();
 }
@@ -219,6 +254,8 @@ std::string RuntimeInstr::GetParamString(RuntimeCtx* ctx, size_t idx) const {
 		return std::any_cast<std::string>(value);
 	if (value.type() == typeid(int64_t))
 		return std::to_string(std::any_cast<int64_t>(value));
+    if (value.type() == typeid(double))
+        return std::to_string(std::any_cast<double>(value));
 	if (value.type() == typeid(TID)) {
 		if (ctx) {
 			return ctx->GetType(std::any_cast<TID>(value))->GetName();
@@ -439,6 +476,16 @@ RuntimeVar* RuntimeExecutor::ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr) 
 					this->SetError("Illegal operation: " + p1.var->GetType()->GetName() + " >= " + p2.var->GetType()->GetName());
 				}
 			}
+            else if(callType == ERuntimeCallType::Or){
+                RuntimeVar* ret = this->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Int64));
+                ret->data.i64 = !p1.var->IsFalse() || !p2.var->IsFalse();
+                this->SetLocal(ctx, bret, ret);
+            }
+            else if(callType == ERuntimeCallType::And){
+                RuntimeVar* ret = this->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Int64));
+                ret->data.i64 = !p1.var->IsFalse() && !p2.var->IsFalse();
+                this->SetLocal(ctx, bret, ret);
+            }
 			else {
 				RuntimeVar* newRet = p1.var->CallOperator(callType, ctx, this, p2.var);
 				if (newRet) this->SetLocal(ctx, bret, newRet);
