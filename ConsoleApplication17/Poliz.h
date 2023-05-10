@@ -75,6 +75,7 @@ class Poliz {
 public:
 
     void changeEntryCmd(int address, PolizCmd cmd);
+    const PolizEntry& getLastEntry() { return poliz.back(); };
     PolizCmd getLastEntryType() { return poliz.empty() ? PolizCmd::Invalid : poliz[poliz.size() - 1].cmd; };
     void addEntry(PolizEntry entry);
     void addEntry(PolizCmd operation, std::string operand, int lexemeIdx);

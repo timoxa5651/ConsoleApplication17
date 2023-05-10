@@ -71,6 +71,7 @@ inline std::string ERuntimeCallType_ToString(ERuntimeCallType c) {
 	case ERuntimeCallType::CompareGreaterEq: return "CompareGreaterEq";
 	case ERuntimeCallType::Or: return "Or";
 	case ERuntimeCallType::And: return "And";
+    case ERuntimeCallType::ArrayAccess: return "ArrayAccess";
 	}
 	return "";
 }
@@ -250,6 +251,9 @@ public:
 		this->nativeTypeConvert = func;
 	}
 
+    bool HasOperator(ERuntimeCallType type){
+        return this->vtable[static_cast<int>(type)] != nullptr;
+    }
 	void SetOperator(ERuntimeCallType type, OpCallType func) {
 		this->vtable[static_cast<int>(type)] = func;
 	}
@@ -330,7 +334,7 @@ public:
 		return this->heldType->CallOperator(type, ctx, exec, this, p2);
 	}
 
-	RuntimeVar* CopyFrom(RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* other);
+	void CopyFrom(RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* other);
 
 
 	bool IsFalse() {
@@ -427,6 +431,7 @@ inline std::string RuntimeInstrType_ToString(RuntimeInstrType c) {
 	case RuntimeInstrType::Jge: return "Jge";
 	case RuntimeInstrType::Jmp: return "Jmp";
 	case RuntimeInstrType::Ret: return "Ret";
+    case RuntimeInstrType::ArraySize: return "ArraySize";
 	}
 	return "";
 }

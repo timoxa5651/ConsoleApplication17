@@ -13,7 +13,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 	int ctorCnt = 1;
 
 	auto CreateScriptingInst = [&cmd, &ctorCnt](const RuntimeInstr& inInstr, const PolizEntry& entry) -> std::string {
-		if (entry.cmd == PolizCmd::Var) { // already scripted
+		if (entry.cmd == PolizCmd::Var || entry.cmd == PolizCmd::ArrayAccess || entry.cmd == PolizCmd::ArraySize) { // already scripted
 			return entry.operand;
 		}
 
@@ -137,31 +137,32 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 			break;
 		}
         case PolizCmd::ArraySize: {
-                RuntimeInstr array(RuntimeInstrType::ArraySize);
+                RuntimeInstr array(RuntimeInstrType::UnOperation);
 
                 std::string retName = "$ctor" + std::to_string(ctorCnt++);
                 array.AddParam(retName);
-                PolizEntry pr = stack.top();
-                stack.pop();
-                assert(pr.cmd == PolizCmd::Var);
-                array.AddParam(CreateScriptingInst(array, pr));
+                array.AddParam(ERuntimeCallType::ArraySize);
+
+                //PolizEntry pr = stack.top();
+                //stack.pop();
+                //assert(pr.cmd == PolizCmd::Var);
+                array.AddParam(CreateScriptingInst(array, entry));
 
                 stack.push(PolizEntry{ -1, PolizCmd::Var, retName, entry.polizEntryIdx });
                 cmd.push_back(array);
                 break;
         }
         case PolizCmd::ArrayAccess:{
-            RuntimeInstr array(RuntimeInstrType::ArrayAccess);
+            RuntimeInstr array(RuntimeInstrType::Operation);
 
             std::string retName = "$ctor" + std::to_string(ctorCnt++);
             array.AddParam(retName);
-            PolizEntry pr2 = stack.top();
-            stack.pop();
+            array.AddParam(ERuntimeCallType::ArrayAccess);
+
             PolizEntry pr1 = stack.top();
             stack.pop();
-            assert(pr2.cmd == PolizCmd::Var); // array
+            array.AddParam(CreateScriptingInst(array, entry));
             array.AddParam(CreateScriptingInst(array, pr1));
-            array.AddParam(CreateScriptingInst(array, pr2));
 
             stack.push(PolizEntry{ -1, PolizCmd::Var, retName, entry.polizEntryIdx });
             cmd.push_back(array);
@@ -169,6 +170,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
         }
 		case PolizCmd::Jz: {
 			PolizEntry actionVar = stack.top();
+            stack.pop();
 			int64_t delta = std::stoll(entry.operand);
 			RuntimeInstr jz(RuntimeInstrType::Jz);
 			jz.AddParam<int64_t>(delta + i);
@@ -177,6 +179,20 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 			cmd.push_back(jz);
 			break;
 		}
+        case PolizCmd::Jge: {
+            PolizEntry actionVar1 = stack.top();
+            stack.pop();
+            PolizEntry actionVar2 = stack.top();
+            stack.pop();
+            int64_t delta = std::stoll(entry.operand);
+                RuntimeInstr jz(RuntimeInstrType::Jge);
+                jz.AddParam<int64_t>(delta + i);
+                jz.AddParam(CreateScriptingInst(jz, actionVar1));
+            jz.AddParam(CreateScriptingInst(jz, actionVar2));
+
+                cmd.push_back(jz);
+                break;
+            }
 		case PolizCmd::Jump: {
 			PolizEntry actionVar = stack.top();
 			int64_t delta = std::stoll(entry.operand);
@@ -210,7 +226,7 @@ void RuntimeMethod::FromPoliz(RuntimeCtx* ctx, const std::vector<PolizEntry>& po
 	// jmp rebase
 	for (int64_t i = 0; i < cmd.size(); ++i) {
 		auto& instr = cmd[i];
-		if (instr.opcode != RuntimeInstrType::Jmp && instr.opcode != RuntimeInstrType::Jz)
+		if (instr.opcode != RuntimeInstrType::Jmp && instr.opcode != RuntimeInstrType::Jz && instr.opcode != RuntimeInstrType::Jge)
 			continue;
 		int64_t& base = instr.RefParam<int64_t>(0);
 		base = addrMap[base] - i - 1;
@@ -378,8 +394,14 @@ RuntimeVar* RuntimeExecutor::ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr) 
 			this->SetLocal(ctx, bret, newRet);
 		}
 		else {
-			RuntimeVar* newRet = p1.var->CallOperator(callType, ctx, this, nullptr);
-			if (newRet) this->SetLocal(ctx, bret, newRet);
+            if(p1.var->GetType()->HasOperator(callType)){
+                RuntimeVar* newRet = p1.var->CallOperator(callType, ctx, this, nullptr);
+                if (newRet) this->SetLocal(ctx, bret, newRet);
+            }
+			else{
+                this->SetError("Invalid operator for type " + p1.var->GetType()->GetName() + ": " +
+                                       ERuntimeCallType_ToString(callType));
+            }
 		}
 	}
 	else if (instr->opcode == RuntimeInstrType::Operation) {
@@ -539,28 +561,29 @@ RuntimeVar* RuntimeExecutor::ExecuteInstr(RuntimeCtx* ctx, RuntimeInstr* instr) 
 		}
 	}
 	else if (instr->opcode == RuntimeInstrType::Jge) {
-		/*auto& bcond = instr->GetParam<std::string>(1);
-		LocalVarState state = this->GetLocal(ctx, bcond);
-		bool fail = true;
+		auto& bcond = instr->GetParam<std::string>(1);
+		LocalVarState p2 = this->GetLocal(ctx, bcond);
+        auto& bcond2 = instr->GetParam<std::string>(2);
+        LocalVarState p1 = this->GetLocal(ctx, bcond2);
+		bool fail = false;
 		RuntimeVar* newRet = p1.var->CallOperator(ERuntimeCallType::CompareEq, ctx, this, p2.var);
 		if (newRet) {
 			if (newRet->data.i64) {
-				this->SetLocal(ctx, bret, newRet);
-				fail = false;
+				fail = true;
 			}
 			else {
 				this->ReturnVar(ctx, newRet);
 				RuntimeVar* newRet = p1.var->CallOperator(ERuntimeCallType::CompareLess, ctx, this, p2.var);
-				if (newRet) {
-					newRet->data.i64 = !newRet->data.i64;
-					this->SetLocal(ctx, bret, newRet);
-					fail = false;
+				if (newRet && !newRet->data.i64) {
+					fail = true;
 				}
+                this->ReturnVar(ctx, newRet);
 			}
 		}
 		if (fail) {
-			this->SetError("Illegal operation: " + p1.var->GetType()->GetName() + " >= " + p2.var->GetType()->GetName());
-		}*/
+            this->ip += instr->GetParam<int64_t>(0);
+			//this->SetError("Illegal operation: " + p1.var->GetType()->GetName() + " >= " + p2.var->GetType()->GetName());
+		}
 	}
 	else if (instr->opcode == RuntimeInstrType::Jmp) {
 		this->ip += instr->GetParam<int64_t>(0);
@@ -721,7 +744,7 @@ RuntimeInstr* RuntimeCtx::GetInstr(REG idx) {
 	return &this->instrHolder[idx];
 }
 
-RuntimeVar* RuntimeVar::CopyFrom(RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* other){
+void RuntimeVar::CopyFrom(RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* other){
     assert(this->heldType->GetTypeEnum() == ERuntimeType::Null);
 
     this->heldType = other->heldType;
@@ -736,7 +759,8 @@ RuntimeVar* RuntimeVar::CopyFrom(RuntimeCtx* ctx, RuntimeExecutor* exec, Runtime
         this->NativeCtor(stream);
         for(size_t i = 0; i < other->data.arr.size; ++i){
             RuntimeVar* cp = exec->CreateVar(ctx);
-            this->data.arr.data[i] = other->data.arr.data[i];
+            cp->CopyFrom(ctx, exec, other->data.arr.data[i]);
+            this->data.arr.data[i] = cp;
         }
         this->data.arr.size = other->data.arr.size;
         // copy Array

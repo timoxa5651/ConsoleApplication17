@@ -459,16 +459,62 @@ RuntimeType* Precompile::Type_Array() {
                 var->data.arr.data = 0;
             }
             var->data.arr.size = var->data.arr.cap = 0;
+            return true;
         }
 		return false;
 	});
     type->SetNativeCtor([](RuntimeVar* var, ByteStream& stream) {
         int64_t cap = stream.Read<int64_t>();
+        cap = std::max(1ll, cap);
         var->data.arr.size = 0;
         var->data.arr.data = new RuntimeVar*[cap];
         var->data.arr.cap = cap;
     });
 
+    type->SetOperator(ERuntimeCallType::ArrayAppend, [](RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* p1, RuntimeVar* p2) -> RuntimeVar* {
+        ERuntimeType targetType = p2->GetType()->GetTypeEnum();
+        if (targetType == ERuntimeType::Null) {
+            exec->SetError("Illegal operation: Trying to append to list null variable: " + p2->GetType()->GetName());
+            return nullptr;
+        }
+        uint32_t& cap = p1->data.arr.cap;
+        uint32_t& size = p1->data.arr.size;
+
+        if(size >= cap){
+            uint32_t newCap = cap * 2;
+            auto newData = new RuntimeVar*[newCap];
+            std::copy(p1->data.arr.data, p1->data.arr.data + size, newData);
+            auto oldData = std::exchange(p1->data.arr.data, newData);
+            delete[] oldData;
+            cap = newCap;
+        }
+        p1->data.arr.data[size++] = p2;
+
+        return nullptr;
+    });
+
+    type->SetOperator(ERuntimeCallType::ArrayAccess, [](RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* p1, RuntimeVar* p2) -> RuntimeVar* {
+        ERuntimeType targetType = p2->GetType()->GetTypeEnum();
+        if (targetType != ERuntimeType::Int64) {
+            exec->SetError("Illegal operation: Index is not Int64: " + p2->GetType()->GetName());
+            return nullptr;
+        }
+        uint32_t& size = p1->data.arr.size;
+        if(p2->data.i64 >= size || p2->data.i64 < 0){
+            exec->SetError("Illegal operation: Invalid array access " + std::to_string(p2->data.i64) + " for [0;" + std::to_string(size) + ")");
+            return p1->data.arr.data[p2->data.i64];;
+        }
+
+        return p1->data.arr.data[p2->data.i64];
+    });
+
+    type->SetOperator(ERuntimeCallType::ArraySize, [](RuntimeCtx* ctx, RuntimeExecutor* exec, RuntimeVar* p1, RuntimeVar* p2) -> RuntimeVar* {
+        RuntimeVar* ret = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Int64));
+        ByteStream stream;
+        stream.Write<int64_t>(p1->data.arr.size);
+        ret->GetType()->NativeCtor(ret, stream);
+        return ret;
+    });
 	return type;
 }
 
@@ -523,6 +569,36 @@ void Precompile::AddReservedMethods(RuntimeCtx* ctx) {
         RuntimeVar *var = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Int64));
         var->NativeCtor(stream);
         return var;
+    }));
+
+    ctx->AddMethod(new RuntimeMethod("append", {"a", "i"}, [](RuntimeCtx *ctx, RuntimeExecutor *exec,
+                                                      const std::vector<RuntimeVar *> &params) -> RuntimeVar * {
+        if (params[0]->GetType()->GetTypeEnum() != ERuntimeType::Array) {
+            exec->SetError("Failed to append, first argument should be array");
+            return 0;
+        }
+        params[0]->CallOperator(ERuntimeCallType::ArrayAppend, ctx, exec, params[1]);
+        return exec->CreateVar(ctx);
+    }));
+
+    ctx->AddMethod(new RuntimeMethod("len", {"a"}, [](RuntimeCtx *ctx, RuntimeExecutor *exec,
+                                                              const std::vector<RuntimeVar *> &params) -> RuntimeVar * {
+        if (params[0]->GetType()->GetTypeEnum() == ERuntimeType::Array) {
+            auto ret = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Int64));
+            ByteStream stream;
+            stream.Write(params[0]->data.arr.size);
+            ret->NativeCtor(stream);
+            return ret;
+        }
+        if (params[0]->GetType()->GetTypeEnum() == ERuntimeType::String) {
+            auto ret = exec->CreateTypedVar(ctx, ctx->GetType(ERuntimeType::Int64));
+            ByteStream stream;
+            stream.Write(params[0]->data.str.size);
+            ret->NativeCtor(stream);
+            return ret;
+        }
+        exec->SetError("Failed to len(), invalid type " + params[0]->GetType()->GetName() + ", expected Array or String");
+        return 0;
     }));
 }
 

@@ -112,25 +112,18 @@ void Parser::ClassBlock() {
 }
 
 void Parser::Precompile() {
-    DeclaredFunction func0;
-    func0.name = "fun1";
-    func0.numArgs = 1;
-    declaredFunctions[""].insert(func0);
+    auto addResv = [&](string str, int args){
+        DeclaredFunction func4;
+        func4.name = str;
+        func4.numArgs = args;
+        declaredFunctions[""].insert(func4);
+    };
 
-	DeclaredFunction func;
-	func.name = "print";
-	func.numArgs = -1;
-	declaredFunctions[""].insert(func);
-
-	DeclaredFunction func2;
-	func2.name = "read";
-	func2.numArgs = -1;
-	declaredFunctions[""].insert(func2);
-
-    DeclaredFunction func3;
-    func3.name = "int";
-    func3.numArgs = 1;
-    declaredFunctions[""].insert(func3);
+    addResv("print", -1);
+    addResv("read", -1);
+    addResv("int", 1);
+    addResv("append", 2);
+    addResv("len", 1);
 }
 
 Poliz Parser::Program() {
@@ -761,6 +754,7 @@ Poliz Parser::For() {
         --nextTmpVarSuffix;
 		throw ParserException(curLexeme_, this->currentLexemeIdx, "expected keyword IN");
 	}
+    this->currentScope->InsertVariable(itr.getLastEntry().operand);
 	ReadLexeme();
 	auto container = Container();
 	ReadLexeme();
